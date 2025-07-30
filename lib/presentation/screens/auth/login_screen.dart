@@ -267,7 +267,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 CustomButton(
                                   text: _isOtpMode ? 'تأكيد الرمز' : 'تسجيل الدخول',
                                   onPressed: _handleLogin,
-                                  isFullWidth: true,
+                                  isFullWidth: true, isOutlined: false,
                                 ),
                                 
                                 if (!_isOtpMode) ...[

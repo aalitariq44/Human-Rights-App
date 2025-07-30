@@ -291,6 +291,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         onPressed: _handleRegister,
                         isFullWidth: true,
                         icon: Icons.person_add,
+                        isOutlined: false, // أو true حسب التصميم المطلوب
                       );
                     },
                   ),

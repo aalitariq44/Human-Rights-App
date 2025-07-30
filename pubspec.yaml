@@ -70,7 +70,7 @@ dependencies:
   form_validator: ^2.1.1
   
   # التاريخ والوقت
-  intl: ^0.19.0
+  intl: ^0.20.2
   
   # الترجمة
   flutter_localizations:

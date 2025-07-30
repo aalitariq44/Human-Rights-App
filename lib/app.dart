@@ -35,7 +35,7 @@ class HoqoqiApp extends StatelessWidget {
               Locale('ar', 'IQ'), // العربية العراق
               Locale('ar', 'KW'), // العربية الكويت
             ],
-            localizationsDelegates: const [
+            localizationsDelegates: [
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,

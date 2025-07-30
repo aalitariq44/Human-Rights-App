@@ -2,13 +2,20 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 
+/// أنواع الأزرار المختلفة
+enum ButtonVariant {
+  filled,
+  outline,
+  text,
+}
+
 /// زر مخصص للتطبيق
 class CustomButton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
   final bool isLoading;
   final bool isFullWidth;
-  final bool isOutlined;
+  final ButtonVariant variant;
   final IconData? icon;
   final Color? backgroundColor;
   final Color? textColor;
@@ -21,23 +28,22 @@ class CustomButton extends StatelessWidget {
     required this.onPressed,
     this.isLoading = false,
     this.isFullWidth = false,
-    this.isOutlined = false,
+    this.variant = ButtonVariant.filled,
     this.icon,
     this.backgroundColor,
     this.textColor,
     this.fontSize,
-    this.padding,
+    this.padding, required bool isOutlined,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final buttonStyle = isOutlined 
-      ? OutlinedButton.styleFrom(
+    final isOutlined = variant == ButtonVariant.outline;
+    final isTextButton = variant == ButtonVariant.text;
+    
+    final buttonStyle = isTextButton
+      ? TextButton.styleFrom(
           foregroundColor: textColor ?? AppColors.primaryColor,
-          side: BorderSide(
-            color: backgroundColor ?? AppColors.primaryColor,
-            width: 1.5,
-          ),
           padding: padding ?? const EdgeInsets.symmetric(
             horizontal: 24, 
             vertical: 16,
@@ -46,8 +52,23 @@ class CustomButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
         )
-      : ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor ?? AppColors.primaryColor,
+      : isOutlined 
+        ? OutlinedButton.styleFrom(
+            foregroundColor: textColor ?? AppColors.primaryColor,
+            side: BorderSide(
+              color: backgroundColor ?? AppColors.primaryColor,
+              width: 1.5,
+            ),
+            padding: padding ?? const EdgeInsets.symmetric(
+              horizontal: 24, 
+              vertical: 16,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          )
+        : ElevatedButton.styleFrom(
+            backgroundColor: backgroundColor ?? AppColors.primaryColor,
           foregroundColor: textColor ?? AppColors.textOnPrimaryColor,
           elevation: 2,
           padding: padding ?? const EdgeInsets.symmetric(
@@ -60,7 +81,7 @@ class CustomButton extends StatelessWidget {
         );
 
     final textStyle = AppTextStyles.button.copyWith(
-      color: isOutlined 
+      color: isTextButton || isOutlined 
         ? (textColor ?? AppColors.primaryColor)
         : (textColor ?? AppColors.textOnPrimaryColor),
       fontSize: fontSize,
@@ -73,7 +94,7 @@ class CustomButton extends StatelessWidget {
             child: CircularProgressIndicator(
               strokeWidth: 2,
               valueColor: AlwaysStoppedAnimation<Color>(
-                isOutlined 
+                isTextButton || isOutlined 
                   ? AppColors.primaryColor 
                   : AppColors.textOnPrimaryColor,
               ),
@@ -98,16 +119,22 @@ class CustomButton extends StatelessWidget {
       );
     }
 
-    return isOutlined
-        ? OutlinedButton(
+    return isTextButton
+        ? TextButton(
             onPressed: isLoading ? null : onPressed,
             style: buttonStyle,
             child: buttonChild,
           )
-        : ElevatedButton(
-            onPressed: isLoading ? null : onPressed,
-            style: buttonStyle,
-            child: buttonChild,
-          );
+        : isOutlined
+            ? OutlinedButton(
+                onPressed: isLoading ? null : onPressed,
+                style: buttonStyle,
+                child: buttonChild,
+              )
+            : ElevatedButton(
+                onPressed: isLoading ? null : onPressed,
+                style: buttonStyle,
+                child: buttonChild,
+              );
   }
 }

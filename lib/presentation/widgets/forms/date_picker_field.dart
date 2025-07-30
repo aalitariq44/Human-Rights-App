@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../core/theme/colors.dart';
-import '../../../core/theme/text_styles.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 
 /// حقل اختيار التاريخ
 class DatePickerField extends StatelessWidget {
@@ -39,7 +39,7 @@ class DatePickerField extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 8.0),
           child: Text(
             labelText,
-            style: AppTextStyles.labelText,
+            style: AppTextStyles.labelLarge,
           ),
         ),
         FormField<DateTime>(

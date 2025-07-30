@@ -110,6 +110,7 @@ class PersonalDataSuccessScreen extends StatelessWidget {
                       context.go(RouteNames.documentUpload);
                     },
                     icon: Icons.upload_file,
+                    isOutlined: false,
                   ),
                   
                   const SizedBox(height: 16),
@@ -122,6 +123,7 @@ class PersonalDataSuccessScreen extends StatelessWidget {
                     },
                     variant: ButtonVariant.outline,
                     icon: Icons.home,
+                    isOutlined: true,
                   ),
                 ],
               ),

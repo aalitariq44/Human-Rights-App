@@ -96,7 +96,8 @@ class EncryptionService {
   Future<Uint8List> decryptBytes(Uint8List encryptedData) async {
     try {
       final encrypted = Encrypted(encryptedData);
-      return _encrypter.decryptBytes(encrypted, iv: _iv);
+      final decryptedBytes = _encrypter.decryptBytes(encrypted, iv: _iv);
+      return Uint8List.fromList(decryptedBytes);
     } catch (e) {
       throw Exception('فشل في فك تشفير البيانات الثنائية: $e');
     }

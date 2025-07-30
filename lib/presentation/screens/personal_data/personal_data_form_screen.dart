@@ -268,6 +268,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
                                 onPressed: _nextStep,
                                 isFullWidth: true,
                                 icon: details.stepIndex == 4 ? Icons.send : Icons.arrow_forward,
+                                isOutlined: false,
                               );
                             },
                           ),
