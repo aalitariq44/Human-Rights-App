@@ -9,15 +9,27 @@ class EncryptionService {
   static const String _keyName = 'encryption_key';
   static const _storage = FlutterSecureStorage();
   
+  static EncryptionService? _instance;
   late final Encrypter _encrypter;
   late final IV _iv;
+  bool _isInitialized = false;
   
-  EncryptionService() {
-    _initEncryption();
+  EncryptionService._();
+  
+  static EncryptionService get instance {
+    _instance ??= EncryptionService._();
+    return _instance!;
+  }
+  
+  /// تهيئة خدمة التشفير (يُستدعى مرة واحدة في بداية التطبيق)
+  static Future<void> initialize() async {
+    await instance._initEncryption();
   }
   
   /// تهيئة التشفير
   Future<void> _initEncryption() async {
+    if (_isInitialized) return;
+    
     try {
       // الحصول على المفتاح أو إنشاء واحد جديد
       final key = await _getOrCreateKey();
@@ -27,6 +39,8 @@ class EncryptionService {
       
       // إنشاء IV ثابت (في التطبيق الحقيقي يُفضل استخدام IV عشوائي لكل تشفير)
       _iv = IV.fromSecureRandom(16);
+      
+      _isInitialized = true;
       
     } catch (e) {
       throw Exception('فشل في تهيئة خدمة التشفير: $e');

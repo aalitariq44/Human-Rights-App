@@ -28,6 +28,27 @@ class AuthProvider extends ChangeNotifier {
     });
   }
   
+  /// فحص حالة المصادقة
+  Future<void> checkAuthStatus() async {
+    try {
+      _setLoading(true);
+      _clearError();
+      
+      // فحص الجلسة الحالية
+      final session = _supabase.auth.currentSession;
+      if (session != null) {
+        _user = session.user;
+      } else {
+        _user = null;
+      }
+      
+      _setLoading(false);
+    } catch (e) {
+      _setError('فشل في فحص حالة المصادقة: $e');
+      _setLoading(false);
+    }
+  }
+  
   /// تسجيل الدخول
   Future<bool> signIn(String email, String password) async {
     try {
