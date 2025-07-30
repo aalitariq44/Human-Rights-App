@@ -149,7 +149,7 @@ class AuthProvider extends ChangeNotifier {
       final response = await _supabase.auth.verifyOTP(
         email: email,
         token: token,
-        type: OtpType.signup,
+        type: OtpType.magiclink,
       );
       
       if (response.user != null) {
@@ -160,6 +160,20 @@ class AuthProvider extends ChangeNotifier {
       
       debugPrint('رمز التحقق غير صحيح');
       _setError('رمز التحقق غير صحيح');
+      _setLoading(false);
+      return false;
+    } on AuthApiException catch (e) {
+      // تعامل مع أخطاء OTP المختلفة
+      if (e.code == 'otp_expired') {
+        debugPrint('رمز التحقق منتهي الصلاحية');
+        _setError('رمز التحقق منتهي الصلاحية. يرجى طلب رمز جديد.');
+      } else if (e.code == 'invalid_otp') {
+        debugPrint('رمز التحقق غير صحيح');
+        _setError('رمز التحقق غير صحيح. يرجى التأكد من الرمز المدخل.');
+      } else {
+        debugPrint('خطأ في التحقق من الرمز: ${e.message}');
+        _setError('خطأ في التحقق من الرمز: ${e.message}');
+      }
       _setLoading(false);
       return false;
     } catch (e) {
