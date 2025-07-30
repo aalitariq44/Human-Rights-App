@@ -7,7 +7,7 @@ import '../../services/encryption_service.dart';
 /// موفر البيانات الشخصية
 class PersonalDataProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
-  final EncryptionService _encryptionService = EncryptionService();
+  final EncryptionService _encryptionService = EncryptionService.instance;
   
   PersonalDataEntity? _personalData;
   bool _isLoading = false;
