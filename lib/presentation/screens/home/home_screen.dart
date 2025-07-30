@@ -57,52 +57,55 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ترحيب بالمستخدم
-              Consumer<AuthProvider>(
-                builder: (context, authProvider, child) {
-                  final userEmail = authProvider.user?.email ?? 'المستخدم';
-                  return Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.person_outline,
-                            size: 48,
-                            color: AppColors.primaryColor,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'مرحباً بك',
-                            style: AppTextStyles.headline4,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            userEmail,
-                            style: AppTextStyles.bodyText2.copyWith(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ترحيب بالمستخدم
+                Consumer<AuthProvider>(
+                  builder: (context, authProvider, child) {
+                    final userEmail = authProvider.user?.email ?? 'المستخدم';
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.person_outline,
+                              size: 48,
                               color: AppColors.primaryColor,
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 16),
+                            Text(
+                              'مرحباً بك',
+                              style: AppTextStyles.headline4,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              userEmail,
+                              style: AppTextStyles.bodyText2.copyWith(
+                                color: AppColors.primaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-              
-              const SizedBox(height: 32),
-              
-              // الخيارات الرئيسية
-              Expanded(
-                child: GridView.count(
+                    );
+                  },
+                ),
+                
+                const SizedBox(height: 32),
+                
+                // الخيارات الرئيسية
+                GridView.count(
                   crossAxisCount: 2,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
+                  childAspectRatio: 0.75, // اجعل الخانات أطول قليلاً
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
                   children: [
                     _buildOptionCard(
                       title: 'إدخال البيانات الشخصية',
@@ -146,8 +149,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
