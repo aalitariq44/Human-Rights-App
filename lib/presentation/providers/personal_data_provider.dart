@@ -57,14 +57,24 @@ class PersonalDataProvider extends ChangeNotifier {
         'adults_over_18_count': data['adultsOver18Count'] is int 
             ? data['adultsOver18Count'] 
             : int.tryParse(data['adultsOver18Count']?.toString() ?? '0') ?? 0,
-        'exit_method': data['exitMethod']?.toString(),
+        'exit_method': data['exitMethod'] != null 
+            ? _convertExitMethodToDatabase(data['exitMethod'].toString()) 
+            : null,
         'compensation_type': data['compensationTypes'] is List 
-            ? (data['compensationTypes'] as List).map((e) => e.toString()).toList()
+            ? (data['compensationTypes'] as List)
+                .map((e) => _convertCompensationTypeToDatabase(e.toString()))
+                .toList()
             : [],
-        'kuwait_job_type': data['kuwaitJobType']?.toString(),
-        'kuwait_official_status': data['kuwaitOfficialStatus']?.toString(),
+        'kuwait_job_type': data['kuwaitJobType'] != null 
+            ? _convertJobTypeToDatabase(data['kuwaitJobType'].toString()) 
+            : null,
+        'kuwait_official_status': data['kuwaitOfficialStatus'] != null 
+            ? _convertOfficialStatusToDatabase(data['kuwaitOfficialStatus'].toString()) 
+            : null,
         'rights_request_type': data['rightsRequestTypes'] is List 
-            ? (data['rightsRequestTypes'] as List).map((e) => e.toString()).toList()
+            ? (data['rightsRequestTypes'] as List)
+                .map((e) => _convertRightsTypeToDatabase(e.toString()))
+                .toList()
             : [],
       };
       
@@ -82,6 +92,14 @@ class PersonalDataProvider extends ChangeNotifier {
           _setLoading(false);
           return false;
         }
+      }
+      
+      // التحقق من صحة البيانات قبل الإرسال
+      final validationError = _validateData(personalDataMap);
+      if (validationError != null) {
+        _setError(validationError);
+        _setLoading(false);
+        return false;
       }
       
       // إرسال البيانات إلى Supabase
@@ -248,9 +266,9 @@ class PersonalDataProvider extends ChangeNotifier {
       case '23503': // Foreign key violation
         return 'خطأ في ربط البيانات. يرجى المحاولة مرة أخرى.';
       case '23502': // Not null violation
-        return 'يرجى ملء جميع البيانات المطلوبة.';
+        return _handleNotNullViolation(e.message);
       case '23514': // Check constraint violation
-        return 'بعض البيانات المدخلة غير صحيحة. يرجى مراجعة البيانات والمحاولة مرة أخرى.';
+        return _handleCheckConstraintViolation(e.message);
       case '42601': // Syntax error
         return 'خطأ في معالجة البيانات. يرجى المحاولة مرة أخرى.';
       case '404':
@@ -266,6 +284,298 @@ class PersonalDataProvider extends ChangeNotifier {
           return 'انتهت مهلة الاتصال. يرجى التأكد من الاتصال بالإنترنت والمحاولة مرة أخرى.';
         }
         return 'حدث خطأ أثناء إرسال البيانات: ${e.message}';
+    }
+  }
+  
+  /// معالجة خطأ القيمة المطلوبة
+  String _handleNotNullViolation(String message) {
+    if (message.contains('full_name_iraq')) {
+      return 'يرجى إدخال الاسم الكامل في العراق.';
+    } else if (message.contains('mother_name')) {
+      return 'يرجى إدخال اسم الأم.';
+    } else if (message.contains('current_province')) {
+      return 'يرجى اختيار المحافظة الحالية.';
+    } else if (message.contains('birth_date')) {
+      return 'يرجى إدخال تاريخ الميلاد.';
+    } else if (message.contains('birth_place')) {
+      return 'يرجى إدخال مكان الولادة.';
+    } else if (message.contains('phone_number')) {
+      return 'يرجى إدخال رقم الهاتف.';
+    } else if (message.contains('national_id_encrypted')) {
+      return 'يرجى إدخال رقم الهوية الوطنية.';
+    } else if (message.contains('national_id_issue_year')) {
+      return 'يرجى إدخال سنة إصدار الهوية الوطنية.';
+    } else if (message.contains('national_id_issuer')) {
+      return 'يرجى إدخال جهة إصدار الهوية الوطنية.';
+    }
+    return 'يرجى ملء جميع البيانات المطلوبة.';
+  }
+  
+  /// معالجة خطأ قيود البيانات
+  String _handleCheckConstraintViolation(String message) {
+    if (message.contains('exit_method')) {
+      return 'يرجى اختيار طريقة صحيحة للخروج من الكويت من الخيارات المتاحة:\n' +
+             '• المغادرة الطوعية\n' +
+             '• الترحيل القسري\n' +
+             '• التهريب البري\n' +
+             '• قبل انسحاب الجيش';
+    } else if (message.contains('compensation_type')) {
+      return 'يرجى اختيار نوع تعويض صحيح من الخيارات المتاحة:\n' +
+             '• خدمات الوظائف الحكومية\n' +
+             '• الأثاث والممتلكات الشخصية\n' +
+             '• التعويض المعنوي\n' +
+             '• تعويض السجن';
+    } else if (message.contains('kuwait_job_type')) {
+      return 'يرجى اختيار نوع عمل صحيح في الكويت من الخيارات المتاحة:\n' +
+             '• موظف مدني\n' +
+             '• موظف عسكري\n' +
+             '• طالب\n' +
+             '• عمل حر';
+    } else if (message.contains('kuwait_official_status')) {
+      return 'يرجى اختيار الوضع الرسمي الصحيح في الكويت:\n' +
+             '• مقيم\n' +
+             '• بدون';
+    } else if (message.contains('rights_request_type')) {
+      return 'يرجى اختيار نوع طلب حقوق صحيح من الخيارات المتاحة:\n' +
+             '• راتب التقاعد\n' +
+             '• أرض سكنية';
+    } else if (message.contains('family_members_count') || message.contains('adults_over_18_count')) {
+      return 'يرجى إدخال عدد صحيح (رقم موجب) لعدد أفراد الأسرة.';
+    } else if (message.contains('national_id_issue_year')) {
+      return 'يرجى إدخال سنة إصدار صحيحة للهوية الوطنية (مثال: 2020).';
+    }
+    return 'بعض البيانات المدخلة غير صحيحة. يرجى مراجعة البيانات والتأكد من صحتها.';
+  }
+  
+  /// التحقق من صحة البيانات قبل الإرسال
+  String? _validateData(Map<String, dynamic> data) {
+    // التحقق من طريقة الخروج من الكويت
+    if (data['exit_method'] != null) {
+      final exitMethod = data['exit_method'].toString();
+      // تحويل من enum name إلى database value إذا لزم الأمر
+      final databaseValue = _convertExitMethodToDatabase(exitMethod);
+      final validExitMethods = ['voluntary_departure', 'forced_deportation', 'land_smuggling', 'before_army_withdrawal'];
+      
+      if (!validExitMethods.contains(databaseValue)) {
+        return 'طريقة الخروج من الكويت غير صحيحة. يرجى اختيار من الخيارات المتاحة:\n' +
+               '• المغادرة الطوعية\n• الترحيل القسري\n• التهريب البري\n• قبل انسحاب الجيش';
+      }
+      // تحديث القيمة في البيانات
+      data['exit_method'] = databaseValue;
+    }
+    
+    // التحقق من نوع العمل في الكويت
+    if (data['kuwait_job_type'] != null) {
+      final jobType = data['kuwait_job_type'].toString();
+      final databaseValue = _convertJobTypeToDatabase(jobType);
+      final validJobTypes = ['civil_employee', 'military_employee', 'student', 'freelance'];
+      
+      if (!validJobTypes.contains(databaseValue)) {
+        return 'نوع العمل في الكويت غير صحيح. يرجى اختيار من الخيارات المتاحة:\n' +
+               '• موظف مدني\n• موظف عسكري\n• طالب\n• عمل حر';
+      }
+      data['kuwait_job_type'] = databaseValue;
+    }
+    
+    // التحقق من الوضع الرسمي في الكويت
+    if (data['kuwait_official_status'] != null) {
+      final status = data['kuwait_official_status'].toString();
+      final databaseValue = _convertOfficialStatusToDatabase(status);
+      final validStatuses = ['resident', 'bidoon'];
+      
+      if (!validStatuses.contains(databaseValue)) {
+        return 'الوضع الرسمي في الكويت غير صحيح. يرجى اختيار من الخيارات المتاحة:\n' +
+               '• مقيم\n• بدون';
+      }
+      data['kuwait_official_status'] = databaseValue;
+    }
+    
+    // التحقق من أنواع التعويضات
+    if (data['compensation_type'] != null && data['compensation_type'] is List) {
+      final compensationList = data['compensation_type'] as List;
+      final validCompensationTypes = ['government_job_services', 'personal_furniture_property', 'moral_compensation', 'prison_compensation'];
+      final convertedList = <String>[];
+      
+      for (final compensation in compensationList) {
+        final databaseValue = _convertCompensationTypeToDatabase(compensation.toString());
+        if (!validCompensationTypes.contains(databaseValue)) {
+          return 'نوع التعويض "$compensation" غير صحيح. يرجى اختيار من الخيارات المتاحة:\n' +
+                 '• خدمات الوظائف الحكومية\n• الأثاث والممتلكات الشخصية\n• التعويض المعنوي\n• تعويض السجن';
+        }
+        convertedList.add(databaseValue);
+      }
+      data['compensation_type'] = convertedList;
+    }
+    
+    // التحقق من أنواع طلبات الحقوق
+    if (data['rights_request_type'] != null && data['rights_request_type'] is List) {
+      final rightsList = data['rights_request_type'] as List;
+      final validRightsTypes = ['pension_salary', 'residential_land'];
+      final convertedList = <String>[];
+      
+      for (final rights in rightsList) {
+        final databaseValue = _convertRightsTypeToDatabase(rights.toString());
+        if (!validRightsTypes.contains(databaseValue)) {
+          return 'نوع طلب الحقوق "$rights" غير صحيح. يرجى اختيار من الخيارات المتاحة:\n' +
+                 '• راتب التقاعد\n• أرض سكنية';
+        }
+        convertedList.add(databaseValue);
+      }
+      data['rights_request_type'] = convertedList;
+    }
+    
+    // التحقق من سنة إصدار الهوية
+    if (data['national_id_issue_year'] != null) {
+      final currentYear = DateTime.now().year;
+      final issueYear = data['national_id_issue_year'];
+      if (issueYear is int) {
+        if (issueYear < 1950 || issueYear > currentYear) {
+          return 'سنة إصدار الهوية الوطنية غير صحيحة. يرجى إدخال سنة بين 1950 و $currentYear.';
+        }
+      }
+    }
+    
+    // التحقق من عدد أفراد الأسرة
+    if (data['family_members_count'] != null) {
+      final count = data['family_members_count'];
+      if (count is int && count < 0) {
+        return 'عدد أفراد الأسرة يجب أن يكون رقماً موجباً أو صفر.';
+      }
+    }
+    
+    // التحقق من عدد البالغين فوق 18
+    if (data['adults_over_18_count'] != null) {
+      final count = data['adults_over_18_count'];
+      if (count is int && count < 0) {
+        return 'عدد البالغين فوق 18 سنة يجب أن يكون رقماً موجباً أو صفر.';
+      }
+      
+      // التحقق من أن عدد البالغين لا يتجاوز عدد أفراد الأسرة
+      final familyCount = data['family_members_count'];
+      if (count is int && familyCount is int && count > familyCount) {
+        return 'عدد البالغين فوق 18 سنة لا يمكن أن يتجاوز عدد أفراد الأسرة الإجمالي.';
+      }
+    }
+    
+    // التحقق من تاريخ الميلاد
+    if (data['birth_date'] != null) {
+      try {
+        final birthDate = DateTime.parse(data['birth_date']);
+        final now = DateTime.now();
+        final age = now.year - birthDate.year;
+        
+        if (birthDate.isAfter(now)) {
+          return 'تاريخ الميلاد لا يمكن أن يكون في المستقبل.';
+        }
+        
+        if (age > 150) {
+          return 'تاريخ الميلاد غير منطقي. يرجى التحقق من التاريخ المدخل.';
+        }
+        
+        if (age < 5) {
+          return 'العمر صغير جداً. يرجى التحقق من تاريخ الميلاد.';
+        }
+      } catch (e) {
+        return 'تنسيق تاريخ الميلاد غير صحيح. يرجى إدخال تاريخ صحيح.';
+      }
+    }
+    
+    // التحقق من رقم الهاتف
+    if (data['phone_number'] != null) {
+      final phone = data['phone_number'].toString().trim();
+      if (phone.isNotEmpty) {
+        // إزالة المسافات والرموز
+        final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+        if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+          return 'رقم الهاتف غير صحيح. يرجى إدخال رقم هاتف صحيح (10-15 رقم).';
+        }
+      }
+    }
+    
+    return null; // لا توجد أخطاء
+  }
+  
+  /// تحويل طريقة الخروج من enum إلى قيمة قاعدة البيانات
+  String _convertExitMethodToDatabase(String value) {
+    switch (value.toLowerCase()) {
+      case 'voluntarydeparture':
+      case 'voluntary_departure':
+        return 'voluntary_departure';
+      case 'forceddeportation':
+      case 'forced_deportation':
+        return 'forced_deportation';
+      case 'landsmuggling':
+      case 'land_smuggling':
+        return 'land_smuggling';
+      case 'beforearmywithdrawal':
+      case 'before_army_withdrawal':
+        return 'before_army_withdrawal';
+      default:
+        return value; // إرجاع القيمة كما هي إذا لم تطابق
+    }
+  }
+  
+  /// تحويل نوع العمل من enum إلى قيمة قاعدة البيانات
+  String _convertJobTypeToDatabase(String value) {
+    switch (value.toLowerCase()) {
+      case 'civilemployee':
+      case 'civil_employee':
+        return 'civil_employee';
+      case 'militaryemployee':
+      case 'military_employee':
+        return 'military_employee';
+      case 'student':
+        return 'student';
+      case 'freelance':
+        return 'freelance';
+      default:
+        return value;
+    }
+  }
+  
+  /// تحويل الوضع الرسمي من enum إلى قيمة قاعدة البيانات
+  String _convertOfficialStatusToDatabase(String value) {
+    switch (value.toLowerCase()) {
+      case 'resident':
+        return 'resident';
+      case 'bidoon':
+        return 'bidoon';
+      default:
+        return value;
+    }
+  }
+  
+  /// تحويل نوع التعويض من enum إلى قيمة قاعدة البيانات
+  String _convertCompensationTypeToDatabase(String value) {
+    switch (value.toLowerCase()) {
+      case 'governmentjobservices':
+      case 'government_job_services':
+        return 'government_job_services';
+      case 'personalfurnitureproperty':
+      case 'personal_furniture_property':
+        return 'personal_furniture_property';
+      case 'moralcompensation':
+      case 'moral_compensation':
+        return 'moral_compensation';
+      case 'prisoncompensation':
+      case 'prison_compensation':
+        return 'prison_compensation';
+      default:
+        return value;
+    }
+  }
+  
+  /// تحويل نوع طلب الحقوق من enum إلى قيمة قاعدة البيانات
+  String _convertRightsTypeToDatabase(String value) {
+    switch (value.toLowerCase()) {
+      case 'pensionsalary':
+      case 'pension_salary':
+        return 'pension_salary';
+      case 'residentialland':
+      case 'residential_land':
+        return 'residential_land';
+      default:
+        return value;
     }
   }
   
