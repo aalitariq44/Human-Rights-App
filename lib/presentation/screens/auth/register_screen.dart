@@ -154,6 +154,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       appBar: AppBar(
         title: const Text('إنشاء حساب جديد'),
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          tooltip: 'رجوع',
+        ),
       ),
       body: SafeArea(
         child: Padding(

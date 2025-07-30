@@ -279,6 +279,13 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
       appBar: AppBar(
         title: Text(_hasExistingData ? 'البيانات الشخصية المُرسلة' : 'إدخال البيانات الشخصية'),
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          tooltip: 'رجوع',
+        ),
       ),
       body: FutureBuilder<void>(
         future: _dataCheckFuture,

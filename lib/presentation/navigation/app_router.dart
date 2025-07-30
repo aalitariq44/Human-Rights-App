@@ -92,6 +92,18 @@ class AppRouter {
     errorBuilder: (context, state) => Scaffold(
       appBar: AppBar(
         title: const Text('خطأ'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            // Use GoRouter context pop instead of Navigator to ensure valid Navigator context
+            if (GoRouter.of(context).canPop()) {
+              context.pop();
+            } else {
+              context.go(RouteNames.home);
+            }
+          },
+          tooltip: 'رجوع',
+        ),
       ),
       body: const Center(
         child: Text(
