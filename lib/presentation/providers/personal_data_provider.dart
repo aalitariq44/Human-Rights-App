@@ -106,27 +106,42 @@ class PersonalDataProvider extends ChangeNotifier {
       final response = await _supabase
           .from('user_personal_data')
           .insert(personalDataMap)
-          .select()
-          .single();
+          .select();
+      
+      if (response.isEmpty) {
+        _setError('فشل في حفظ البيانات. يرجى المحاولة مرة أخرى.');
+        _setLoading(false);
+        return false;
+      }
       
       // تحويل البيانات المُستلمة إلى Entity
-      _personalData = await _mapToEntity(response);
+      _personalData = await _mapToEntity(response.first);
       
       // تسجيل النشاط
       await _logActivity('personal_data_submitted', {
-        'personal_data_id': response['id'],
+        'personal_data_id': response.first['id'],
       });
       
       _setLoading(false);
       return true;
       
     } on PostgrestException catch (e) {
+      debugPrint('PostgrestException: ${e.code} - ${e.message}');
       final errorMessage = _handlePostgrestError(e);
       _setError(errorMessage);
       _setLoading(false);
       return false;
     } catch (e) {
-      final errorMessage = _handleGeneralError(e);
+      debugPrint('General error in submitPersonalData: $e');
+      String errorMessage = _handleGeneralError(e);
+      
+      // إضافة معلومات إضافية لأخطاء specific
+      if (e.toString().contains('Bad state: No element')) {
+        errorMessage = 'حدث خطأ في معالجة البيانات. يرجى المحاولة مرة أخرى أو التواصل مع الدعم الفني.';
+      } else if (e.toString().contains('firstWhere')) {
+        errorMessage = 'حدث خطأ في تحويل البيانات. يرجى التأكد من صحة البيانات المدخلة.';
+      }
+      
       _setError(errorMessage);
       _setLoading(false);
       return false;
@@ -142,6 +157,8 @@ class PersonalDataProvider extends ChangeNotifier {
       final user = _supabase.auth.currentUser;
       if (user == null) {
         _setError('المستخدم غير مسجل الدخول');
+        _setLoading(false);
+        notifyListeners();
         return;
       }
       
@@ -157,15 +174,18 @@ class PersonalDataProvider extends ChangeNotifier {
       }
       
       _setLoading(false);
+      notifyListeners();
       
     } on PostgrestException catch (e) {
       final errorMessage = _handlePostgrestError(e);
       _setError(errorMessage);
       _setLoading(false);
+      notifyListeners();
     } catch (e) {
       final errorMessage = _handleGeneralError(e);
       _setError(errorMessage);
       _setLoading(false);
+      notifyListeners();
     }
   }
   
@@ -233,22 +253,26 @@ class PersonalDataProvider extends ChangeNotifier {
       familyMembersCount: data['family_members_count'],
       adultsOver18Count: data['adults_over_18_count'],
       exitMethod: data['exit_method'] != null 
-          ? ExitMethod.values.firstWhere((e) => e.name == data['exit_method'])
+          ? _findExitMethodByName(data['exit_method'])
           : null,
       compensationTypes: data['compensation_type'] != null
           ? (data['compensation_type'] as List)
-              .map((e) => CompensationType.values.firstWhere((type) => type.name == e))
+              .map((e) => _findCompensationTypeByName(e.toString()))
+              .where((type) => type != null)
+              .cast<CompensationType>()
               .toList()
           : [],
       kuwaitJobType: data['kuwait_job_type'] != null
-          ? KuwaitJobType.values.firstWhere((e) => e.name == data['kuwait_job_type'])
+          ? _findKuwaitJobTypeByName(data['kuwait_job_type'])
           : null,
       kuwaitOfficialStatus: data['kuwait_official_status'] != null
-          ? KuwaitOfficialStatus.values.firstWhere((e) => e.name == data['kuwait_official_status'])
+          ? _findKuwaitOfficialStatusByName(data['kuwait_official_status'])
           : null,
       rightsRequestTypes: data['rights_request_type'] != null
           ? (data['rights_request_type'] as List)
-              .map((e) => RightsRequestType.values.firstWhere((type) => type.name == e))
+              .map((e) => _findRightsRequestTypeByName(e.toString()))
+              .where((type) => type != null)
+              .cast<RightsRequestType>()
               .toList()
           : [],
       createdAt: DateTime.parse(data['created_at']),
@@ -670,5 +694,85 @@ class PersonalDataProvider extends ChangeNotifier {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       notifyListeners();
     });
+  }
+
+  /// البحث الآمن عن ExitMethod بالاسم
+  ExitMethod? _findExitMethodByName(String name) {
+    try {
+      // أولاً ابحث بالـ enum name المباشر
+      return ExitMethod.values.firstWhere((e) => e.name == name);
+    } catch (e) {
+      try {
+        // ثم ابحث بالتحويل من قاعدة البيانات
+        return ExitMethod.values.firstWhere((e) => _convertExitMethodToDatabase(e.name) == name);
+      } catch (e2) {
+        debugPrint('ExitMethod not found: $name');
+        return null;
+      }
+    }
+  }
+
+  /// البحث الآمن عن CompensationType بالاسم
+  CompensationType? _findCompensationTypeByName(String name) {
+    try {
+      // أولاً ابحث بالـ enum name المباشر
+      return CompensationType.values.firstWhere((e) => e.name == name);
+    } catch (e) {
+      try {
+        // ثم ابحث بالتحويل من قاعدة البيانات
+        return CompensationType.values.firstWhere((e) => _convertCompensationTypeToDatabase(e.name) == name);
+      } catch (e2) {
+        debugPrint('CompensationType not found: $name');
+        return null;
+      }
+    }
+  }
+
+  /// البحث الآمن عن KuwaitJobType بالاسم
+  KuwaitJobType? _findKuwaitJobTypeByName(String name) {
+    try {
+      // أولاً ابحث بالـ enum name المباشر
+      return KuwaitJobType.values.firstWhere((e) => e.name == name);
+    } catch (e) {
+      try {
+        // ثم ابحث بالتحويل من قاعدة البيانات
+        return KuwaitJobType.values.firstWhere((e) => _convertJobTypeToDatabase(e.name) == name);
+      } catch (e2) {
+        debugPrint('KuwaitJobType not found: $name');
+        return null;
+      }
+    }
+  }
+
+  /// البحث الآمن عن KuwaitOfficialStatus بالاسم
+  KuwaitOfficialStatus? _findKuwaitOfficialStatusByName(String name) {
+    try {
+      // أولاً ابحث بالـ enum name المباشر
+      return KuwaitOfficialStatus.values.firstWhere((e) => e.name == name);
+    } catch (e) {
+      try {
+        // ثم ابحث بالتحويل من قاعدة البيانات
+        return KuwaitOfficialStatus.values.firstWhere((e) => _convertOfficialStatusToDatabase(e.name) == name);
+      } catch (e2) {
+        debugPrint('KuwaitOfficialStatus not found: $name');
+        return null;
+      }
+    }
+  }
+
+  /// البحث الآمن عن RightsRequestType بالاسم
+  RightsRequestType? _findRightsRequestTypeByName(String name) {
+    try {
+      // أولاً ابحث بالـ enum name المباشر
+      return RightsRequestType.values.firstWhere((e) => e.name == name);
+    } catch (e) {
+      try {
+        // ثم ابحث بالتحويل من قاعدة البيانات
+        return RightsRequestType.values.firstWhere((e) => _convertRightsTypeToDatabase(e.name) == name);
+      } catch (e2) {
+        debugPrint('RightsRequestType not found: $name');
+        return null;
+      }
+    }
   }
 }

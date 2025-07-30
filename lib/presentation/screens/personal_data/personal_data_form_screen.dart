@@ -25,9 +25,7 @@ class PersonalDataFormScreen extends StatefulWidget {
 class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
   final _formKey = GlobalKey<FormState>();
   int _currentStep = 0;
-  bool _hasExistingData = false;
-  Future<void>? _dataCheckFuture;
-  
+
   // Controllers للخطوة الأولى - البيانات الأساسية
   final _fullNameIraqController = TextEditingController();
   final _motherNameController = TextEditingController();
@@ -35,26 +33,26 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
   final _birthPlaceController = TextEditingController();
   final _phoneNumberController = TextEditingController();
   DateTime? _selectedBirthDate;
-  
+
   // Controllers للخطوة الثانية - بيانات البطاقة الوطنية
   final _nationalIdController = TextEditingController();
   final _nationalIdIssuerController = TextEditingController();
   int? _nationalIdIssueYear;
-  
+
   // Controllers للخطوة الثالثة - بيانات الكويت
   final _fullNameKuwaitController = TextEditingController();
   final _kuwaitAddressController = TextEditingController();
   final _kuwaitEducationLevelController = TextEditingController();
   final _familyMembersCountController = TextEditingController();
   final _adultsOver18CountController = TextEditingController();
-  
+
   // متغيرات للخطوة الرابعة - الخيارات
   ExitMethod? _selectedExitMethod;
   List<CompensationType> _selectedCompensationTypes = [];
   KuwaitJobType? _selectedKuwaitJobType;
   KuwaitOfficialStatus? _selectedKuwaitOfficialStatus;
   List<RightsRequestType> _selectedRightsRequestTypes = [];
-  
+
   // متغيرات للخطوة الخامسة - المستمسكات
   bool _hasIraqiAffairsDept = false;
   bool _hasKuwaitImmigration = false;
@@ -64,57 +62,40 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
   @override
   void initState() {
     super.initState();
-    // إنشاء Future لفحص البيانات
-    _dataCheckFuture = _checkExistingData();
-  }
-
-  /// فحص وجود بيانات مسبقة
-  Future<void> _checkExistingData() async {
-    if (!mounted) return; // التأكد من أن الويدجت لا يزال موجوداً
-    
-    final personalDataProvider = Provider.of<PersonalDataProvider>(context, listen: false);
-    
-    try {
-      await personalDataProvider.fetchPersonalData();
-      
-      if (mounted && personalDataProvider.hasData) {
-        setState(() {
-          _hasExistingData = true;
-        });
-        _populateFields(personalDataProvider.personalData!);
-      }
-    } catch (e) {
-      // في حالة وجود خطأ في جلب البيانات، نظهر النموذج العادي
-      debugPrint('Error fetching existing data: $e');
-    }
+    // جلب البيانات عند تحميل الشاشة لأول مرة
+    // نستخدم addPostFrameCallback لضمان أن الـ context متاح
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<PersonalDataProvider>(context, listen: false).fetchPersonalData();
+    });
   }
 
   /// ملء الحقول بالبيانات الموجودة
   void _populateFields(PersonalDataEntity data) {
+    // التحقق مما إذا كانت الحقول قد مُلئت بالفعل لتجنب إعادة الكتابة
+    if (_fullNameIraqController.text.isNotEmpty) return;
+
     _fullNameIraqController.text = data.fullNameIraq;
     _motherNameController.text = data.motherName;
     _currentProvinceController.text = data.currentProvince;
     _birthPlaceController.text = data.birthPlace;
     _phoneNumberController.text = data.phoneNumber;
     _selectedBirthDate = data.birthDate;
-    
+
     _nationalIdController.text = data.nationalId;
     _nationalIdIssueYear = data.nationalIdIssueYear;
     _nationalIdIssuerController.text = data.nationalIdIssuer;
-    
+
     _fullNameKuwaitController.text = data.fullNameKuwait;
     _kuwaitAddressController.text = data.kuwaitAddress;
     _kuwaitEducationLevelController.text = data.kuwaitEducationLevel;
     _familyMembersCountController.text = data.familyMembersCount.toString();
     _adultsOver18CountController.text = data.adultsOver18Count.toString();
-    
+
     _selectedExitMethod = data.exitMethod;
     _selectedCompensationTypes = List.from(data.compensationTypes);
     _selectedKuwaitJobType = data.kuwaitJobType;
     _selectedKuwaitOfficialStatus = data.kuwaitOfficialStatus;
     _selectedRightsRequestTypes = List.from(data.rightsRequestTypes);
-    
-    // Note: لا توجد في entity بيانات المستمسكات، لذا سنبقيها false
   }
 
   @override
@@ -186,9 +167,9 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
 
   bool _validateDocumentsData() {
     // التحقق من وجود المستمسكات المطلوبة على الأقل
-    return _hasIraqiAffairsDept || 
-           _hasKuwaitImmigration || 
-           _hasValidResidence || 
+    return _hasIraqiAffairsDept ||
+           _hasKuwaitImmigration ||
+           _hasValidResidence ||
            _hasRedCrossInternational;
   }
 
@@ -221,7 +202,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final personalDataProvider = Provider.of<PersonalDataProvider>(context, listen: false);
-    
+
     // إنشاء كائن البيانات الشخصية
     final personalData = {
       'fullNameIraq': _fullNameIraqController.text.trim(),
@@ -274,39 +255,72 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
-      appBar: AppBar(
-        title: Text(_hasExistingData ? 'البيانات الشخصية المُرسلة' : 'إدخال البيانات الشخصية'),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            // Navigate back to home using go_router to avoid popping the last page
-            context.go(RouteNames.home);
-          },
-          tooltip: 'رجوع',
-        ),
-      ),
-      body: FutureBuilder<void>(
-        future: _dataCheckFuture,
-        builder: (context, snapshot) {
-          // أثناء فحص البيانات الموجودة
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: LoadingWidget());
-          }
-          
-          // إذا كانت البيانات موجودة، عرضها للقراءة فقط
-          if (_hasExistingData) {
-            return _buildReadOnlyView();
-          }
-          
-          // إذا لم تكن البيانات موجودة، عرض النموذج العادي
-          return _buildFormView();
-        },
-      ),
+    // استخدام Consumer للاستماع للتغييرات في PersonalDataProvider
+    return Consumer<PersonalDataProvider>(
+      builder: (context, provider, child) {
+        // ملء الحقول إذا كانت البيانات موجودة
+        if (provider.hasData && provider.personalData != null) {
+          _populateFields(provider.personalData!);
+        }
+
+        return Scaffold(
+          backgroundColor: AppColors.backgroundColor,
+          appBar: AppBar(
+            title: Text(provider.hasData ? 'البيانات الشخصية المُرسلة' : 'إدخال البيانات الشخصية'),
+            centerTitle: true,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                context.go(RouteNames.home);
+              },
+              tooltip: 'رجوع',
+            ),
+          ),
+          body: _buildBody(provider),
+        );
+      },
     );
   }
+
+  /// بناء محتوى الصفحة بناءً على حالة الموفر
+  Widget _buildBody(PersonalDataProvider provider) {
+    if (provider.isLoading) {
+      return const Center(child: LoadingWidget());
+    }
+
+    if (provider.hasData) {
+      return _buildReadOnlyView();
+    }
+    
+    // عرض رسالة خطأ إذا وجدت
+    if (provider.errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                provider.errorMessage!,
+                style: AppTextStyles.bodyText1.copyWith(color: AppColors.errorColor),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              CustomButton(
+                text: 'حاول مرة أخرى',
+                onPressed: () => provider.fetchPersonalData(),
+                isOutlined: false,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // إذا لم تكن البيانات موجودة ولا يوجد خطأ، عرض النموذج
+    return _buildFormView();
+  }
+
 
   /// بناء الواجهة للقراءة فقط (عندما تكون البيانات موجودة مسبقاً)
   Widget _buildReadOnlyView() {
@@ -357,14 +371,14 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // عرض البيانات للقراءة فقط
           Expanded(
             child: _buildReadOnlyForm(),
           ),
-          
+
           // زر العودة للرئيسية
           const SizedBox(height: 16),
           CustomButton(
@@ -393,13 +407,13 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             _buildReadOnlyField('مكان الولادة', _birthPlaceController.text),
             _buildReadOnlyField('رقم الهاتف', _phoneNumberController.text),
           ]),
-          
+
           _buildReadOnlySection('بيانات الهوية الوطنية', [
             _buildReadOnlyField('رقم الهوية الوطنية', _nationalIdController.text),
             _buildReadOnlyField('سنة الإصدار', _nationalIdIssueYear?.toString() ?? ''),
             _buildReadOnlyField('جهة الإصدار', _nationalIdIssuerController.text),
           ]),
-          
+
           _buildReadOnlySection('بيانات الكويت السابقة', [
             _buildReadOnlyField('الاسم الكامل في الكويت', _fullNameKuwaitController.text),
             _buildReadOnlyField('العنوان في الكويت', _kuwaitAddressController.text),
@@ -407,7 +421,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             _buildReadOnlyField('عدد أفراد الأسرة', _familyMembersCountController.text),
             _buildReadOnlyField('عدد البالغين فوق 18', _adultsOver18CountController.text),
           ]),
-          
+
           _buildReadOnlySection('الخيارات والتفضيلات', [
             _buildReadOnlyField('طريقة الخروج من الكويت', _getExitMethodText(_selectedExitMethod)),
             _buildReadOnlyField('نوع العمل في الكويت', _getJobTypeText(_selectedKuwaitJobType)),
@@ -482,72 +496,31 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
   /// الحصول على نص طريقة الخروج
   String _getExitMethodText(ExitMethod? method) {
     if (method == null) return 'غير محدد';
-    switch (method) {
-      case ExitMethod.voluntaryDeparture:
-        return 'المغادرة الطوعية';
-      case ExitMethod.forcedDeportation:
-        return 'الترحيل القسري';
-      case ExitMethod.landSmuggling:
-        return 'التهريب البري';
-      case ExitMethod.beforeArmyWithdrawal:
-        return 'قبل انسحاب الجيش';
-    }
+    return method.displayName;
   }
 
   /// الحصول على نص نوع العمل
   String _getJobTypeText(KuwaitJobType? jobType) {
     if (jobType == null) return 'غير محدد';
-    switch (jobType) {
-      case KuwaitJobType.civilEmployee:
-        return 'موظف مدني';
-      case KuwaitJobType.militaryEmployee:
-        return 'موظف عسكري';
-      case KuwaitJobType.student:
-        return 'طالب';
-      case KuwaitJobType.freelance:
-        return 'عمل حر';
-    }
+    return jobType.displayName;
   }
 
   /// الحصول على نص الوضع الرسمي
   String _getOfficialStatusText(KuwaitOfficialStatus? status) {
     if (status == null) return 'غير محدد';
-    switch (status) {
-      case KuwaitOfficialStatus.resident:
-        return 'مقيم';
-      case KuwaitOfficialStatus.bidoon:
-        return 'بدون';
-    }
+    return status.displayName;
   }
 
   /// الحصول على نص أنواع التعويض
   String _getCompensationTypesText(List<CompensationType> types) {
     if (types.isEmpty) return 'غير محدد';
-    return types.map((type) {
-      switch (type) {
-        case CompensationType.governmentJobServices:
-          return 'خدمات الوظائف الحكومية';
-        case CompensationType.personalFurnitureProperty:
-          return 'الأثاث والممتلكات الشخصية';
-        case CompensationType.moralCompensation:
-          return 'التعويض المعنوي';
-        case CompensationType.prisonCompensation:
-          return 'تعويض السجن';
-      }
-    }).join('، ');
+    return types.map((type) => type.displayName).join('، ');
   }
 
   /// الحصول على نص أنواع طلبات الحقوق
   String _getRightsRequestTypesText(List<RightsRequestType> types) {
     if (types.isEmpty) return 'غير محدد';
-    return types.map((type) {
-      switch (type) {
-        case RightsRequestType.pensionSalary:
-          return 'راتب التقاعد';
-        case RightsRequestType.residentialLand:
-          return 'أرض سكنية';
-      }
-    }).join('، ');
+    return types.map((type) => type.displayName).join('، ');
   }
 
   /// تنسيق التاريخ
@@ -568,7 +541,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             backgroundColor: AppColors.primaryLightColor,
             valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
           ),
-          
+
           Expanded(
             child: Stepper(
               currentStep: _currentStep,
@@ -598,7 +571,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
                             if (provider.isLoading) {
                               return const LoadingWidget();
                             }
-                            
+
                             return CustomButton(
                               text: details.stepIndex == 4 ? 'إرسال البيانات' : 'التالي',
                               onPressed: _nextStep,
@@ -641,7 +614,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             validator: (value) => value?.isEmpty == true ? 'هذا الحقل مطلوب' : null,
           ),
           const SizedBox(height: 16),
-          
+
           CustomTextField(
             controller: _motherNameController,
             labelText: 'اسم الأم',
@@ -650,7 +623,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             validator: (value) => value?.isEmpty == true ? 'هذا الحقل مطلوب' : null,
           ),
           const SizedBox(height: 16),
-          
+
           CustomTextField(
             controller: _currentProvinceController,
             labelText: 'المحافظة الحالية',
@@ -659,7 +632,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             validator: (value) => value?.isEmpty == true ? 'هذا الحقل مطلوب' : null,
           ),
           const SizedBox(height: 16),
-          
+
           DatePickerField(
             labelText: 'تاريخ الميلاد',
             selectedDate: _selectedBirthDate,
@@ -671,7 +644,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             validator: (date) => date == null ? 'يرجى اختيار تاريخ الميلاد' : null,
           ),
           const SizedBox(height: 16),
-          
+
           CustomTextField(
             controller: _birthPlaceController,
             labelText: 'مكان الميلاد',
@@ -680,7 +653,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             validator: (value) => value?.isEmpty == true ? 'هذا الحقل مطلوب' : null,
           ),
           const SizedBox(height: 16),
-          
+
           CustomTextField(
             controller: _phoneNumberController,
             labelText: 'رقم الهاتف',
@@ -692,10 +665,10 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
         ],
       ),
       isActive: _currentStep >= 0,
-      state: _currentStep > 0 
-        ? StepState.complete 
-        : _currentStep == 0 
-          ? StepState.editing 
+      state: _currentStep > 0
+        ? StepState.complete
+        : _currentStep == 0
+          ? StepState.editing
           : StepState.disabled,
     );
   }
@@ -715,7 +688,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             validator: (value) => value?.isEmpty == true ? 'هذا الحقل مطلوب' : null,
           ),
           const SizedBox(height: 16),
-          
+
           DropdownField<int>(
             labelText: 'سنة إصدار البطاقة',
             value: _nationalIdIssueYear,
@@ -733,7 +706,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             validator: (value) => value == null ? 'يرجى اختيار سنة الإصدار' : null,
           ),
           const SizedBox(height: 16),
-          
+
           CustomTextField(
             controller: _nationalIdIssuerController,
             labelText: 'جهة الإصدار',
@@ -744,10 +717,10 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
         ],
       ),
       isActive: _currentStep >= 1,
-      state: _currentStep > 1 
-        ? StepState.complete 
-        : _currentStep == 1 
-          ? StepState.editing 
+      state: _currentStep > 1
+        ? StepState.complete
+        : _currentStep == 1
+          ? StepState.editing
           : StepState.disabled,
     );
   }
@@ -766,7 +739,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             validator: (value) => value?.isEmpty == true ? 'هذا الحقل مطلوب' : null,
           ),
           const SizedBox(height: 16),
-          
+
           CustomTextField(
             controller: _kuwaitAddressController,
             labelText: 'عنوان السكن في الكويت سابقاً',
@@ -776,7 +749,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             validator: (value) => value?.isEmpty == true ? 'هذا الحقل مطلوب' : null,
           ),
           const SizedBox(height: 16),
-          
+
           CustomTextField(
             controller: _kuwaitEducationLevelController,
             labelText: 'التحصيل الدراسي في الكويت',
@@ -785,7 +758,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             validator: (value) => value?.isEmpty == true ? 'هذا الحقل مطلوب' : null,
           ),
           const SizedBox(height: 16),
-          
+
           CustomTextField(
             controller: _familyMembersCountController,
             labelText: 'عدد أفراد الأسرة حال الخروج من الكويت',
@@ -800,7 +773,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             },
           ),
           const SizedBox(height: 16),
-          
+
           CustomTextField(
             controller: _adultsOver18CountController,
             labelText: 'عدد من تم الـ18 عام حال الخروج من الكويت',
@@ -817,10 +790,10 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
         ],
       ),
       isActive: _currentStep >= 2,
-      state: _currentStep > 2 
-        ? StepState.complete 
-        : _currentStep == 2 
-          ? StepState.editing 
+      state: _currentStep > 2
+        ? StepState.complete
+        : _currentStep == 2
+          ? StepState.editing
           : StepState.disabled,
     );
   }
@@ -835,7 +808,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
           // طريقة الخروج
           Text('طريقة الخروج من دولة الكويت', style: AppTextStyles.subtitle1),
           const SizedBox(height: 8),
-          ...ExitMethod.values.map((method) => 
+          ...ExitMethod.values.map((method) =>
             RadioListTile<ExitMethod>(
               title: Text(method.displayName),
               value: method,
@@ -847,9 +820,9 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
               },
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // نوع التعويض
           Text('نوع طلب التعويض (يمكن اختيار أكثر من نوع)', style: AppTextStyles.subtitle1),
           const SizedBox(height: 8),
@@ -863,14 +836,14 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             },
             getDisplayName: (type) => type.displayName,
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // طبيعة العمل
           DropdownField<KuwaitJobType>(
             labelText: 'طبيعة العمل في الكويت سابقاً',
             value: _selectedKuwaitJobType,
-            items: KuwaitJobType.values.map((type) => 
+            items: KuwaitJobType.values.map((type) =>
               DropdownMenuItem(
                 value: type,
                 child: Text(type.displayName),
@@ -883,14 +856,14 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             },
             validator: (value) => value == null ? 'يرجى اختيار طبيعة العمل' : null,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // الوضع الرسمي
           DropdownField<KuwaitOfficialStatus>(
             labelText: 'الوضع الرسمي بالكويت',
             value: _selectedKuwaitOfficialStatus,
-            items: KuwaitOfficialStatus.values.map((status) => 
+            items: KuwaitOfficialStatus.values.map((status) =>
               DropdownMenuItem(
                 value: status,
                 child: Text(status.displayName),
@@ -903,9 +876,9 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             },
             validator: (value) => value == null ? 'يرجى اختيار الوضع الرسمي' : null,
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // نوع طلب الحقوق
           Text('نوع طلب الحقوق (يمكن اختيار أكثر من نوع)', style: AppTextStyles.subtitle1),
           const SizedBox(height: 8),
@@ -922,10 +895,10 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
         ],
       ),
       isActive: _currentStep >= 3,
-      state: _currentStep > 3 
-        ? StepState.complete 
-        : _currentStep == 3 
-          ? StepState.editing 
+      state: _currentStep > 3
+        ? StepState.complete
+        : _currentStep == 3
+          ? StepState.editing
           : StepState.disabled,
     );
   }
@@ -942,7 +915,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
             style: AppTextStyles.bodyText1,
           ),
           const SizedBox(height: 16),
-          
+
           CheckboxListTile(
             title: const Text('دائرة شؤون العراقي'),
             subtitle: const Text('وثائق من دائرة شؤون العراقي'),
@@ -953,7 +926,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
               });
             },
           ),
-          
+
           CheckboxListTile(
             title: const Text('منفذ الهجرة الكويتية'),
             subtitle: const Text('وثائق من منفذ الهجرة الكويتية'),
@@ -964,7 +937,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
               });
             },
           ),
-          
+
           CheckboxListTile(
             title: const Text('إقامة سارية المفعول'),
             subtitle: const Text('إقامة كانت سارية المفعول'),
@@ -975,7 +948,7 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
               });
             },
           ),
-          
+
           CheckboxListTile(
             title: const Text('الصليب الأحمر الدولي'),
             subtitle: const Text('وثائق من الصليب الأحمر الدولي'),
@@ -986,9 +959,9 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
               });
             },
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           if (!_validateDocumentsData())
             Container(
               padding: const EdgeInsets.all(16),
