@@ -23,26 +23,17 @@ class PersonalDataEntity {
   final int adultsOver18Count;         // عدد من تم الـ18 عام حال الخروج من الكويت
   
   // خيارات متعددة
-  final ExitMethod exitMethod;         // طريقة الخروج من دولة الكويت
+  final ExitMethod? exitMethod;         // طريقة الخروج من دولة الكويت
   final List<CompensationType> compensationTypes; // نوع طلب التعويض
-  final KuwaitJobType kuwaitJobType;   // طبيعة العمل في دولة الكويت سابقاً
-  final KuwaitOfficialStatus kuwaitOfficialStatus; // الوضع الرسمي بالكويت
+  final KuwaitJobType? kuwaitJobType;   // طبيعة العمل في دولة الكويت سابقاً
+  final KuwaitOfficialStatus? kuwaitOfficialStatus; // الوضع الرسمي بالكويت
   final List<RightsRequestType> rightsRequestTypes; // نوع طلب الحقوق
-  
-  // المستمسكات الثبوتية
-  final bool hasIraqiAffairsDept;      // دائرة شؤون العراقي
-  final bool hasKuwaitImmigration;     // منفذ الهجرة الكويتية
-  final bool hasValidResidence;        // إقامة سارية المفعول
-  final bool hasRedCrossInternational; // الصليب الأحمر الدولي
   
   // معلومات إضافية
   final String? id;                    // معرف فريد
   final String userId;                 // معرف المستخدم
-  final DataStatus status;             // حالة البيانات
   final DateTime createdAt;            // تاريخ الإنشاء
   final DateTime? updatedAt;           // تاريخ آخر تحديث
-  final DateTime? submittedAt;         // تاريخ الإرسال
-  final String? notes;                 // ملاحظات
 
   const PersonalDataEntity({
     required this.fullNameIraq,
@@ -64,17 +55,10 @@ class PersonalDataEntity {
     required this.kuwaitJobType,
     required this.kuwaitOfficialStatus,
     required this.rightsRequestTypes,
-    required this.hasIraqiAffairsDept,
-    required this.hasKuwaitImmigration,
-    required this.hasValidResidence,
-    required this.hasRedCrossInternational,
     this.id,
     required this.userId,
-    required this.status,
     required this.createdAt,
     this.updatedAt,
-    this.submittedAt,
-    this.notes,
   });
 
   /// نسخ الكيان مع تحديث بعض الخصائص
@@ -98,17 +82,10 @@ class PersonalDataEntity {
     KuwaitJobType? kuwaitJobType,
     KuwaitOfficialStatus? kuwaitOfficialStatus,
     List<RightsRequestType>? rightsRequestTypes,
-    bool? hasIraqiAffairsDept,
-    bool? hasKuwaitImmigration,
-    bool? hasValidResidence,
-    bool? hasRedCrossInternational,
     String? id,
     String? userId,
-    DataStatus? status,
     DateTime? createdAt,
     DateTime? updatedAt,
-    DateTime? submittedAt,
-    String? notes,
   }) {
     return PersonalDataEntity(
       fullNameIraq: fullNameIraq ?? this.fullNameIraq,
@@ -130,17 +107,10 @@ class PersonalDataEntity {
       kuwaitJobType: kuwaitJobType ?? this.kuwaitJobType,
       kuwaitOfficialStatus: kuwaitOfficialStatus ?? this.kuwaitOfficialStatus,
       rightsRequestTypes: rightsRequestTypes ?? this.rightsRequestTypes,
-      hasIraqiAffairsDept: hasIraqiAffairsDept ?? this.hasIraqiAffairsDept,
-      hasKuwaitImmigration: hasKuwaitImmigration ?? this.hasKuwaitImmigration,
-      hasValidResidence: hasValidResidence ?? this.hasValidResidence,
-      hasRedCrossInternational: hasRedCrossInternational ?? this.hasRedCrossInternational,
       id: id ?? this.id,
       userId: userId ?? this.userId,
-      status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      submittedAt: submittedAt ?? this.submittedAt,
-      notes: notes ?? this.notes,
     );
   }
 
@@ -192,6 +162,6 @@ class PersonalDataEntity {
 
   @override
   String toString() {
-    return 'PersonalDataEntity(id: $id, fullNameIraq: $fullNameIraq, status: $status)';
+    return 'PersonalDataEntity(id: $id, fullNameIraq: $fullNameIraq, userId: $userId)';
   }
 }

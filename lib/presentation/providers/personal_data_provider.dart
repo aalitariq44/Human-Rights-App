@@ -27,47 +27,66 @@ class PersonalDataProvider extends ChangeNotifier {
       
       final user = _supabase.auth.currentUser;
       if (user == null) {
-        _setError('المستخدم غير مسجل الدخول');
+        _setError('المستخدم غير مسجل للدخول. يرجى تسجيل الدخول أولاً.');
         return false;
       }
       
       // تشفير الرقم الوطني
       final encryptedNationalId = await _encryptionService.encrypt(data['nationalId']);
       
-      // إعداد البيانات للإرسال
+      // إعداد البيانات للإرسال وفقاً لهيكل قاعدة البيانات
       final personalDataMap = {
         'user_id': user.id,
-        'full_name_iraq': data['fullNameIraq'],
-        'mother_name': data['motherName'],
-        'current_province': data['currentProvince'],
-        'birth_date': data['birthDate'],
-        'birth_place': data['birthPlace'],
-        'phone_number': data['phoneNumber'],
-        'national_id': encryptedNationalId,
-        'national_id_issue_year': data['nationalIdIssueYear'],
-        'national_id_issuer': data['nationalIdIssuer'],
-        'full_name_kuwait': data['fullNameKuwait'],
-        'kuwait_address': data['kuwaitAddress'],
-        'kuwait_education_level': data['kuwaitEducationLevel'],
-        'family_members_count': data['familyMembersCount'],
-        'adults_over_18_count': data['adultsOver18Count'],
-        'exit_method': data['exitMethod'],
-        'compensation_types': data['compensationTypes'],
-        'kuwait_job_type': data['kuwaitJobType'],
-        'kuwait_official_status': data['kuwaitOfficialStatus'],
-        'rights_request_types': data['rightsRequestTypes'],
-        'has_iraqi_affairs_dept': data['hasIraqiAffairsDept'],
-        'has_kuwait_immigration': data['hasKuwaitImmigration'],
-        'has_valid_residence': data['hasValidResidence'],
-        'has_red_cross_international': data['hasRedCrossInternational'],
-        'status': DataStatus.submitted.name,
-        'created_at': DateTime.now().toIso8601String(),
-        'submitted_at': DateTime.now().toIso8601String(),
+        'full_name_iraq': data['fullNameIraq']?.toString().trim(),
+        'mother_name': data['motherName']?.toString().trim(),
+        'current_province': data['currentProvince']?.toString().trim(),
+        'birth_date': data['birthDate']?.toString(),
+        'birth_place': data['birthPlace']?.toString().trim(),
+        'phone_number': data['phoneNumber']?.toString().trim(),
+        'national_id_encrypted': encryptedNationalId,
+        'national_id_issue_year': data['nationalIdIssueYear'] is int 
+            ? data['nationalIdIssueYear'] 
+            : int.tryParse(data['nationalIdIssueYear']?.toString() ?? ''),
+        'national_id_issuer': data['nationalIdIssuer']?.toString().trim(),
+        'full_name_kuwait': data['fullNameKuwait']?.toString().trim(),
+        'kuwait_address': data['kuwaitAddress']?.toString().trim(),
+        'kuwait_education_level': data['kuwaitEducationLevel']?.toString().trim(),
+        'family_members_count': data['familyMembersCount'] is int 
+            ? data['familyMembersCount'] 
+            : int.tryParse(data['familyMembersCount']?.toString() ?? '0') ?? 0,
+        'adults_over_18_count': data['adultsOver18Count'] is int 
+            ? data['adultsOver18Count'] 
+            : int.tryParse(data['adultsOver18Count']?.toString() ?? '0') ?? 0,
+        'exit_method': data['exitMethod']?.toString(),
+        'compensation_type': data['compensationTypes'] is List 
+            ? (data['compensationTypes'] as List).map((e) => e.toString()).toList()
+            : [],
+        'kuwait_job_type': data['kuwaitJobType']?.toString(),
+        'kuwait_official_status': data['kuwaitOfficialStatus']?.toString(),
+        'rights_request_type': data['rightsRequestTypes'] is List 
+            ? (data['rightsRequestTypes'] as List).map((e) => e.toString()).toList()
+            : [],
       };
+      
+      // التحقق من البيانات المطلوبة
+      final requiredFields = [
+        'full_name_iraq', 'mother_name', 'current_province', 
+        'birth_date', 'birth_place', 'phone_number', 
+        'national_id_encrypted', 'national_id_issue_year', 'national_id_issuer'
+      ];
+      
+      for (final field in requiredFields) {
+        if (personalDataMap[field] == null || 
+            (personalDataMap[field] is String && (personalDataMap[field] as String).isEmpty)) {
+          _setError('يرجى ملء جميع البيانات المطلوبة. الحقل المفقود: ${_getFieldArabicName(field)}');
+          _setLoading(false);
+          return false;
+        }
+      }
       
       // إرسال البيانات إلى Supabase
       final response = await _supabase
-          .from('personal_data')
+          .from('user_personal_data')
           .insert(personalDataMap)
           .select()
           .single();
@@ -78,14 +97,19 @@ class PersonalDataProvider extends ChangeNotifier {
       // تسجيل النشاط
       await _logActivity('personal_data_submitted', {
         'personal_data_id': response['id'],
-        'status': DataStatus.submitted.name,
       });
       
       _setLoading(false);
       return true;
       
+    } on PostgrestException catch (e) {
+      final errorMessage = _handlePostgrestError(e);
+      _setError(errorMessage);
+      _setLoading(false);
+      return false;
     } catch (e) {
-      _setError('خطأ في إرسال البيانات: ${e.toString()}');
+      final errorMessage = _handleGeneralError(e);
+      _setError(errorMessage);
       _setLoading(false);
       return false;
     }
@@ -104,7 +128,7 @@ class PersonalDataProvider extends ChangeNotifier {
       }
       
       final response = await _supabase
-          .from('personal_data')
+          .from('user_personal_data')
           .select()
           .eq('user_id', user.id)
           .order('created_at', ascending: false)
@@ -116,8 +140,13 @@ class PersonalDataProvider extends ChangeNotifier {
       
       _setLoading(false);
       
+    } on PostgrestException catch (e) {
+      final errorMessage = _handlePostgrestError(e);
+      _setError(errorMessage);
+      _setLoading(false);
     } catch (e) {
-      _setError('خطأ في جلب البيانات: ${e.toString()}');
+      final errorMessage = _handleGeneralError(e);
+      _setError(errorMessage);
       _setLoading(false);
     }
   }
@@ -129,9 +158,8 @@ class PersonalDataProvider extends ChangeNotifier {
       _clearError();
       
       await _supabase
-          .from('personal_data')
+          .from('user_personal_data')
           .update({
-            'status': status.name,
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', id);
@@ -139,7 +167,6 @@ class PersonalDataProvider extends ChangeNotifier {
       // تحديث البيانات المحلية
       if (_personalData?.id == id) {
         _personalData = _personalData!.copyWith(
-          status: status,
           updatedAt: DateTime.now(),
         );
       }
@@ -147,14 +174,19 @@ class PersonalDataProvider extends ChangeNotifier {
       // تسجيل النشاط
       await _logActivity('data_status_updated', {
         'personal_data_id': id,
-        'new_status': status.name,
       });
       
       _setLoading(false);
       return true;
       
+    } on PostgrestException catch (e) {
+      final errorMessage = _handlePostgrestError(e);
+      _setError(errorMessage);
+      _setLoading(false);
+      return false;
     } catch (e) {
-      _setError('خطأ في تحديث الحالة: ${e.toString()}');
+      final errorMessage = _handleGeneralError(e);
+      _setError(errorMessage);
       _setLoading(false);
       return false;
     }
@@ -163,7 +195,7 @@ class PersonalDataProvider extends ChangeNotifier {
   /// تحويل البيانات من الخريطة إلى Entity
   Future<PersonalDataEntity> _mapToEntity(Map<String, dynamic> data) async {
     // فك تشفير الرقم الوطني
-    final decryptedNationalId = await _encryptionService.decrypt(data['national_id']);
+    final decryptedNationalId = await _encryptionService.decrypt(data['national_id_encrypted']);
     
     return PersonalDataEntity(
       id: data['id'],
@@ -182,37 +214,99 @@ class PersonalDataProvider extends ChangeNotifier {
       kuwaitEducationLevel: data['kuwait_education_level'],
       familyMembersCount: data['family_members_count'],
       adultsOver18Count: data['adults_over_18_count'],
-      exitMethod: ExitMethod.values.firstWhere(
-        (e) => e.name == data['exit_method'],
-      ),
-      compensationTypes: (data['compensation_types'] as List)
-          .map((e) => CompensationType.values.firstWhere((type) => type.name == e))
-          .toList(),
-      kuwaitJobType: KuwaitJobType.values.firstWhere(
-        (e) => e.name == data['kuwait_job_type'],
-      ),
-      kuwaitOfficialStatus: KuwaitOfficialStatus.values.firstWhere(
-        (e) => e.name == data['kuwait_official_status'],
-      ),
-      rightsRequestTypes: (data['rights_request_types'] as List)
-          .map((e) => RightsRequestType.values.firstWhere((type) => type.name == e))
-          .toList(),
-      hasIraqiAffairsDept: data['has_iraqi_affairs_dept'],
-      hasKuwaitImmigration: data['has_kuwait_immigration'],
-      hasValidResidence: data['has_valid_residence'],
-      hasRedCrossInternational: data['has_red_cross_international'],
-      status: DataStatus.values.firstWhere(
-        (e) => e.name == data['status'],
-      ),
+      exitMethod: data['exit_method'] != null 
+          ? ExitMethod.values.firstWhere((e) => e.name == data['exit_method'])
+          : null,
+      compensationTypes: data['compensation_type'] != null
+          ? (data['compensation_type'] as List)
+              .map((e) => CompensationType.values.firstWhere((type) => type.name == e))
+              .toList()
+          : [],
+      kuwaitJobType: data['kuwait_job_type'] != null
+          ? KuwaitJobType.values.firstWhere((e) => e.name == data['kuwait_job_type'])
+          : null,
+      kuwaitOfficialStatus: data['kuwait_official_status'] != null
+          ? KuwaitOfficialStatus.values.firstWhere((e) => e.name == data['kuwait_official_status'])
+          : null,
+      rightsRequestTypes: data['rights_request_type'] != null
+          ? (data['rights_request_type'] as List)
+              .map((e) => RightsRequestType.values.firstWhere((type) => type.name == e))
+              .toList()
+          : [],
       createdAt: DateTime.parse(data['created_at']),
       updatedAt: data['updated_at'] != null 
           ? DateTime.parse(data['updated_at']) 
           : null,
-      submittedAt: data['submitted_at'] != null 
-          ? DateTime.parse(data['submitted_at']) 
-          : null,
-      notes: data['notes'],
     );
+  }
+  
+  /// معالجة أخطاء PostgreSQL
+  String _handlePostgrestError(PostgrestException e) {
+    switch (e.code) {
+      case '23505': // Unique violation
+        return 'لقد تم إرسال البيانات من قبل. لا يمكن إرسال البيانات أكثر من مرة واحدة.';
+      case '23503': // Foreign key violation
+        return 'خطأ في ربط البيانات. يرجى المحاولة مرة أخرى.';
+      case '23502': // Not null violation
+        return 'يرجى ملء جميع البيانات المطلوبة.';
+      case '23514': // Check constraint violation
+        return 'بعض البيانات المدخلة غير صحيحة. يرجى مراجعة البيانات والمحاولة مرة أخرى.';
+      case '42601': // Syntax error
+        return 'خطأ في معالجة البيانات. يرجى المحاولة مرة أخرى.';
+      case '404':
+        return 'لم يتم العثور على الخدمة المطلوبة. يرجى التأكد من الاتصال بالإنترنت والمحاولة مرة أخرى.';
+      default:
+        if (e.message.toLowerCase().contains('not found')) {
+          return 'خدمة قاعدة البيانات غير متاحة حالياً. يرجى المحاولة مرة أخرى لاحقاً.';
+        } else if (e.message.toLowerCase().contains('duplicate')) {
+          return 'لقد تم إرسال هذه البيانات من قبل.';
+        } else if (e.message.toLowerCase().contains('permission')) {
+          return 'ليس لديك صلاحية لتنفيذ هذا الإجراء.';
+        } else if (e.message.toLowerCase().contains('timeout')) {
+          return 'انتهت مهلة الاتصال. يرجى التأكد من الاتصال بالإنترنت والمحاولة مرة أخرى.';
+        }
+        return 'حدث خطأ أثناء إرسال البيانات: ${e.message}';
+    }
+  }
+  
+  /// معالجة الأخطاء العامة
+  String _handleGeneralError(dynamic e) {
+    if (e.toString().contains('SocketException')) {
+      return 'لا يوجد اتصال بالإنترنت. يرجى التأكد من الاتصال والمحاولة مرة أخرى.';
+    } else if (e.toString().contains('TimeoutException')) {
+      return 'انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.';
+    } else if (e.toString().contains('FormatException')) {
+      return 'تنسيق البيانات غير صحيح. يرجى مراجعة البيانات المدخلة.';
+    } else if (e.toString().contains('AuthException')) {
+      return 'انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.';
+    }
+    return 'حدث خطأ غير متوقع: ${e.toString()}';
+  }
+  
+  /// الحصول على الاسم العربي للحقل
+  String _getFieldArabicName(String fieldName) {
+    switch (fieldName) {
+      case 'full_name_iraq':
+        return 'الاسم الكامل في العراق';
+      case 'mother_name':
+        return 'اسم الأم';
+      case 'current_province':
+        return 'المحافظة الحالية';
+      case 'birth_date':
+        return 'تاريخ الميلاد';
+      case 'birth_place':
+        return 'مكان الولادة';
+      case 'phone_number':
+        return 'رقم الهاتف';
+      case 'national_id_encrypted':
+        return 'رقم الهوية الوطنية';
+      case 'national_id_issue_year':
+        return 'سنة إصدار الهوية';
+      case 'national_id_issuer':
+        return 'جهة إصدار الهوية';
+      default:
+        return fieldName;
+    }
   }
   
   /// تسجيل النشاط

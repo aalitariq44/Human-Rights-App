@@ -132,9 +132,31 @@ class AuthProvider extends ChangeNotifier {
       
       _setLoading(false);
       return true;
+    } on AuthApiException catch (e) {
+      if (e.code == 'signup_disabled') {
+        debugPrint('التسجيل معطل حالياً');
+        _setError('خدمة التسجيل معطلة حالياً. يرجى المحاولة لاحقاً.');
+      } else if (e.code == 'over_email_send_rate_limit') {
+        debugPrint('تم تجاوز حد إرسال الرسائل');
+        _setError('تم إرسال عدد كبير من الرسائل. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.');
+      } else if (e.code == 'email_not_confirmed') {
+        debugPrint('البريد الإلكتروني غير مؤكد');
+        _setError('البريد الإلكتروني غير مؤكد. يرجى تأكيد حسابك أولاً.');
+      } else {
+        debugPrint('خطأ في إرسال رمز التحقق: ${e.message}');
+        _setError('خطأ في إرسال رمز التحقق: ${e.message}');
+      }
+      _setLoading(false);
+      return false;
     } catch (e) {
       debugPrint('خطأ في إرسال رمز التحقق: ${e.toString()}');
-      _setError('خطأ في إرسال رمز التحقق: ${e.toString()}');
+      if (e.toString().contains('SocketException')) {
+        _setError('لا يوجد اتصال بالإنترنت. يرجى التأكد من الاتصال والمحاولة مرة أخرى.');
+      } else if (e.toString().contains('TimeoutException')) {
+        _setError('انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.');
+      } else {
+        _setError('خطأ في إرسال رمز التحقق: ${e.toString()}');
+      }
       _setLoading(false);
       return false;
     }
@@ -149,7 +171,7 @@ class AuthProvider extends ChangeNotifier {
       final response = await _supabase.auth.verifyOTP(
         email: email,
         token: token,
-        type: OtpType.magiclink,
+        type: OtpType.email,
       );
       
       if (response.user != null) {
@@ -170,6 +192,12 @@ class AuthProvider extends ChangeNotifier {
       } else if (e.code == 'invalid_otp') {
         debugPrint('رمز التحقق غير صحيح');
         _setError('رمز التحقق غير صحيح. يرجى التأكد من الرمز المدخل.');
+      } else if (e.code == 'token_hash_not_found') {
+        debugPrint('رمز التحقق غير موجود أو منتهي الصلاحية');
+        _setError('رمز التحقق غير موجود أو منتهي الصلاحية. يرجى طلب رمز جديد.');
+      } else if (e.code == 'signup_disabled') {
+        debugPrint('التسجيل معطل حالياً');
+        _setError('خدمة التسجيل معطلة حالياً. يرجى المحاولة لاحقاً.');
       } else {
         debugPrint('خطأ في التحقق من الرمز: ${e.message}');
         _setError('خطأ في التحقق من الرمز: ${e.message}');
@@ -178,7 +206,13 @@ class AuthProvider extends ChangeNotifier {
       return false;
     } catch (e) {
       debugPrint('خطأ في التحقق من الرمز: ${e.toString()}');
-      _setError('خطأ في التحقق من الرمز: ${e.toString()}');
+      if (e.toString().contains('SocketException')) {
+        _setError('لا يوجد اتصال بالإنترنت. يرجى التأكد من الاتصال والمحاولة مرة أخرى.');
+      } else if (e.toString().contains('TimeoutException')) {
+        _setError('انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.');
+      } else {
+        _setError('خطأ في التحقق من الرمز: ${e.toString()}');
+      }
       _setLoading(false);
       return false;
     }
