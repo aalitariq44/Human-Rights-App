@@ -282,7 +282,8 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.of(context).pop();
+            // Navigate back to home using go_router to avoid popping the last page
+            context.go(RouteNames.home);
           },
           tooltip: 'رجوع',
         ),
