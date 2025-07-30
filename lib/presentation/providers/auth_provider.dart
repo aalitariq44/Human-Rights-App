@@ -44,6 +44,7 @@ class AuthProvider extends ChangeNotifier {
       
       _setLoading(false);
     } catch (e) {
+      debugPrint('فشل في فحص حالة المصادقة: ${e.toString()}');
       _setError('فشل في فحص حالة المصادقة: $e');
       _setLoading(false);
     }
@@ -66,10 +67,23 @@ class AuthProvider extends ChangeNotifier {
         return true;
       }
       
+      debugPrint('فشل في تسجيل الدخول');
       _setError('فشل في تسجيل الدخول');
       _setLoading(false);
       return false;
+    } on AuthApiException catch (e) {
+      // تعامل خاص عند عدم تأكيد البريد الإلكتروني
+      if (e.code == 'email_not_confirmed') {
+        debugPrint('البريد الإلكتروني غير مؤكد');
+        _setError('البريد الإلكتروني غير مؤكد. يرجى تأكيد حسابك من خلال الرابط المرسل إلى بريدك.');
+      } else {
+        debugPrint('خطأ في تسجيل الدخول: ${e.message}');
+        _setError('خطأ في تسجيل الدخول: ${e.message}');
+      }
+      _setLoading(false);
+      return false;
     } catch (e) {
+      debugPrint('خطأ في تسجيل الدخول: ${e.toString()}');
       _setError('خطأ في تسجيل الدخول: ${e.toString()}');
       _setLoading(false);
       return false;
@@ -93,10 +107,12 @@ class AuthProvider extends ChangeNotifier {
         return true;
       }
       
+      debugPrint('فشل في إنشاء الحساب');
       _setError('فشل في إنشاء الحساب');
       _setLoading(false);
       return false;
     } catch (e) {
+      debugPrint('خطأ في إنشاء الحساب: ${e.toString()}');
       _setError('خطأ في إنشاء الحساب: ${e.toString()}');
       _setLoading(false);
       return false;
@@ -117,6 +133,7 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
+      debugPrint('خطأ في إرسال رمز التحقق: ${e.toString()}');
       _setError('خطأ في إرسال رمز التحقق: ${e.toString()}');
       _setLoading(false);
       return false;
@@ -141,10 +158,12 @@ class AuthProvider extends ChangeNotifier {
         return true;
       }
       
+      debugPrint('رمز التحقق غير صحيح');
       _setError('رمز التحقق غير صحيح');
       _setLoading(false);
       return false;
     } catch (e) {
+      debugPrint('خطأ في التحقق من الرمز: ${e.toString()}');
       _setError('خطأ في التحقق من الرمز: ${e.toString()}');
       _setLoading(false);
       return false;
@@ -158,6 +177,7 @@ class AuthProvider extends ChangeNotifier {
       _user = null;
       notifyListeners();
     } catch (e) {
+      debugPrint('خطأ في تسجيل الخروج: ${e.toString()}');
       _setError('خطأ في تسجيل الخروج: ${e.toString()}');
     }
   }
@@ -173,6 +193,7 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
+      debugPrint('خطأ في إعادة تعيين كلمة المرور: ${e.toString()}');
       _setError('خطأ في إعادة تعيين كلمة المرور: ${e.toString()}');
       _setLoading(false);
       return false;
