@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../domain/entities/enums.dart';
+import '../../../domain/entities/personal_data_entity.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/loading_widget.dart';
@@ -25,6 +25,8 @@ class PersonalDataFormScreen extends StatefulWidget {
 class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
   final _formKey = GlobalKey<FormState>();
   int _currentStep = 0;
+  bool _hasExistingData = false;
+  Future<void>? _dataCheckFuture;
   
   // Controllers للخطوة الأولى - البيانات الأساسية
   final _fullNameIraqController = TextEditingController();
@@ -58,6 +60,62 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
   bool _hasKuwaitImmigration = false;
   bool _hasValidResidence = false;
   bool _hasRedCrossInternational = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // إنشاء Future لفحص البيانات
+    _dataCheckFuture = _checkExistingData();
+  }
+
+  /// فحص وجود بيانات مسبقة
+  Future<void> _checkExistingData() async {
+    if (!mounted) return; // التأكد من أن الويدجت لا يزال موجوداً
+    
+    final personalDataProvider = Provider.of<PersonalDataProvider>(context, listen: false);
+    
+    try {
+      await personalDataProvider.fetchPersonalData();
+      
+      if (mounted && personalDataProvider.hasData) {
+        setState(() {
+          _hasExistingData = true;
+        });
+        _populateFields(personalDataProvider.personalData!);
+      }
+    } catch (e) {
+      // في حالة وجود خطأ في جلب البيانات، نظهر النموذج العادي
+      debugPrint('Error fetching existing data: $e');
+    }
+  }
+
+  /// ملء الحقول بالبيانات الموجودة
+  void _populateFields(PersonalDataEntity data) {
+    _fullNameIraqController.text = data.fullNameIraq;
+    _motherNameController.text = data.motherName;
+    _currentProvinceController.text = data.currentProvince;
+    _birthPlaceController.text = data.birthPlace;
+    _phoneNumberController.text = data.phoneNumber;
+    _selectedBirthDate = data.birthDate;
+    
+    _nationalIdController.text = data.nationalId;
+    _nationalIdIssueYear = data.nationalIdIssueYear;
+    _nationalIdIssuerController.text = data.nationalIdIssuer;
+    
+    _fullNameKuwaitController.text = data.fullNameKuwait;
+    _kuwaitAddressController.text = data.kuwaitAddress;
+    _kuwaitEducationLevelController.text = data.kuwaitEducationLevel;
+    _familyMembersCountController.text = data.familyMembersCount.toString();
+    _adultsOver18CountController.text = data.adultsOver18Count.toString();
+    
+    _selectedExitMethod = data.exitMethod;
+    _selectedCompensationTypes = List.from(data.compensationTypes);
+    _selectedKuwaitJobType = data.kuwaitJobType;
+    _selectedKuwaitOfficialStatus = data.kuwaitOfficialStatus;
+    _selectedRightsRequestTypes = List.from(data.rightsRequestTypes);
+    
+    // Note: لا توجد في entity بيانات المستمسكات، لذا سنبقيها false
+  }
 
   @override
   void dispose() {
@@ -219,75 +277,344 @@ class _PersonalDataFormScreenState extends State<PersonalDataFormScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        title: const Text('إدخال البيانات الشخصية'),
+        title: Text(_hasExistingData ? 'البيانات الشخصية المُرسلة' : 'إدخال البيانات الشخصية'),
         centerTitle: true,
       ),
-      body: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            // مؤشر التقدم
-            LinearProgressIndicator(
-              value: (_currentStep + 1) / 5,
-              backgroundColor: AppColors.primaryLightColor,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
+      body: FutureBuilder<void>(
+        future: _dataCheckFuture,
+        builder: (context, snapshot) {
+          // أثناء فحص البيانات الموجودة
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: LoadingWidget());
+          }
+          
+          // إذا كانت البيانات موجودة، عرضها للقراءة فقط
+          if (_hasExistingData) {
+            return _buildReadOnlyView();
+          }
+          
+          // إذا لم تكن البيانات موجودة، عرض النموذج العادي
+          return _buildFormView();
+        },
+      ),
+    );
+  }
+
+  /// بناء الواجهة للقراءة فقط (عندما تكون البيانات موجودة مسبقاً)
+  Widget _buildReadOnlyView() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          // رسالة حالة البيانات
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primaryColor),
             ),
-            
-            Expanded(
-              child: Stepper(
-                currentStep: _currentStep,
-                onStepTapped: (step) {
-                  // السماح بالانتقال للخطوات السابقة فقط
-                  if (step <= _currentStep) {
-                    setState(() {
-                      _currentStep = step;
-                    });
-                  }
-                },
-                controlsBuilder: (context, details) {
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 16.0),
-                    child: Row(
-                      children: [
-                        if (details.stepIndex > 0)
-                          CustomButton(
-                            text: 'السابق',
-                            onPressed: _previousStep,
-                            isOutlined: true,
-                          ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Consumer<PersonalDataProvider>(
-                            builder: (context, provider, child) {
-                              if (provider.isLoading) {
-                                return const LoadingWidget();
-                              }
-                              
-                              return CustomButton(
-                                text: details.stepIndex == 4 ? 'إرسال البيانات' : 'التالي',
-                                onPressed: _nextStep,
-                                isFullWidth: true,
-                                icon: details.stepIndex == 4 ? Icons.send : Icons.arrow_forward,
-                                isOutlined: false,
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-                steps: [
-                  _buildBasicDataStep(),
-                  _buildNationalIdStep(),
-                  _buildKuwaitDataStep(),
-                  _buildOptionsStep(),
-                  _buildDocumentsStep(),
-                ],
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.check_circle,
+                  color: AppColors.primaryColor,
+                  size: 48,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'تم إرسال بياناتك بنجاح',
+                  style: AppTextStyles.headline3.copyWith(
+                    color: AppColors.primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'بياناتك قيد المراجعة من قبل الفريق المختص',
+                  style: AppTextStyles.bodyText1.copyWith(
+                    color: AppColors.textSecondaryColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'سيتم التواصل معك عند الانتهاء من المراجعة',
+                  style: AppTextStyles.bodyText2.copyWith(
+                    color: AppColors.textSecondaryColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // عرض البيانات للقراءة فقط
+          Expanded(
+            child: _buildReadOnlyForm(),
+          ),
+          
+          // زر العودة للرئيسية
+          const SizedBox(height: 16),
+          CustomButton(
+            text: 'العودة للرئيسية',
+            onPressed: () => context.go('/'),
+            icon: Icons.home,
+            isFullWidth: true,
+            isOutlined: false,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// بناء النموذج للقراءة فقط
+  Widget _buildReadOnlyForm() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildReadOnlySection('البيانات الأساسية', [
+            _buildReadOnlyField('الاسم الكامل في العراق', _fullNameIraqController.text),
+            _buildReadOnlyField('اسم الأم', _motherNameController.text),
+            _buildReadOnlyField('المحافظة الحالية', _currentProvinceController.text),
+            _buildReadOnlyField('تاريخ الميلاد', _formatDate(_selectedBirthDate)),
+            _buildReadOnlyField('مكان الولادة', _birthPlaceController.text),
+            _buildReadOnlyField('رقم الهاتف', _phoneNumberController.text),
+          ]),
+          
+          _buildReadOnlySection('بيانات الهوية الوطنية', [
+            _buildReadOnlyField('رقم الهوية الوطنية', _nationalIdController.text),
+            _buildReadOnlyField('سنة الإصدار', _nationalIdIssueYear?.toString() ?? ''),
+            _buildReadOnlyField('جهة الإصدار', _nationalIdIssuerController.text),
+          ]),
+          
+          _buildReadOnlySection('بيانات الكويت السابقة', [
+            _buildReadOnlyField('الاسم الكامل في الكويت', _fullNameKuwaitController.text),
+            _buildReadOnlyField('العنوان في الكويت', _kuwaitAddressController.text),
+            _buildReadOnlyField('مستوى التعليم', _kuwaitEducationLevelController.text),
+            _buildReadOnlyField('عدد أفراد الأسرة', _familyMembersCountController.text),
+            _buildReadOnlyField('عدد البالغين فوق 18', _adultsOver18CountController.text),
+          ]),
+          
+          _buildReadOnlySection('الخيارات والتفضيلات', [
+            _buildReadOnlyField('طريقة الخروج من الكويت', _getExitMethodText(_selectedExitMethod)),
+            _buildReadOnlyField('نوع العمل في الكويت', _getJobTypeText(_selectedKuwaitJobType)),
+            _buildReadOnlyField('الوضع الرسمي', _getOfficialStatusText(_selectedKuwaitOfficialStatus)),
+            _buildReadOnlyField('أنواع التعويض', _getCompensationTypesText(_selectedCompensationTypes)),
+            _buildReadOnlyField('أنواع طلبات الحقوق', _getRightsRequestTypesText(_selectedRightsRequestTypes)),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  /// بناء قسم للقراءة فقط
+  Widget _buildReadOnlySection(String title, List<Widget> fields) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: AppTextStyles.headline4.copyWith(
+                color: AppColors.primaryColor,
+                fontWeight: FontWeight.bold,
               ),
             ),
+            const SizedBox(height: 16),
+            ...fields,
           ],
         ),
+      ),
+    );
+  }
+
+  /// بناء حقل للقراءة فقط
+  Widget _buildReadOnlyField(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: AppTextStyles.bodyText2.copyWith(
+              color: AppColors.textSecondaryColor,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.backgroundColor,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.borderColor),
+            ),
+            child: Text(
+              value.isNotEmpty ? value : 'غير محدد',
+              style: AppTextStyles.bodyText1.copyWith(
+                color: value.isNotEmpty ? AppColors.textPrimaryColor : AppColors.textSecondaryColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// الحصول على نص طريقة الخروج
+  String _getExitMethodText(ExitMethod? method) {
+    if (method == null) return 'غير محدد';
+    switch (method) {
+      case ExitMethod.voluntaryDeparture:
+        return 'المغادرة الطوعية';
+      case ExitMethod.forcedDeportation:
+        return 'الترحيل القسري';
+      case ExitMethod.landSmuggling:
+        return 'التهريب البري';
+      case ExitMethod.beforeArmyWithdrawal:
+        return 'قبل انسحاب الجيش';
+    }
+  }
+
+  /// الحصول على نص نوع العمل
+  String _getJobTypeText(KuwaitJobType? jobType) {
+    if (jobType == null) return 'غير محدد';
+    switch (jobType) {
+      case KuwaitJobType.civilEmployee:
+        return 'موظف مدني';
+      case KuwaitJobType.militaryEmployee:
+        return 'موظف عسكري';
+      case KuwaitJobType.student:
+        return 'طالب';
+      case KuwaitJobType.freelance:
+        return 'عمل حر';
+    }
+  }
+
+  /// الحصول على نص الوضع الرسمي
+  String _getOfficialStatusText(KuwaitOfficialStatus? status) {
+    if (status == null) return 'غير محدد';
+    switch (status) {
+      case KuwaitOfficialStatus.resident:
+        return 'مقيم';
+      case KuwaitOfficialStatus.bidoon:
+        return 'بدون';
+    }
+  }
+
+  /// الحصول على نص أنواع التعويض
+  String _getCompensationTypesText(List<CompensationType> types) {
+    if (types.isEmpty) return 'غير محدد';
+    return types.map((type) {
+      switch (type) {
+        case CompensationType.governmentJobServices:
+          return 'خدمات الوظائف الحكومية';
+        case CompensationType.personalFurnitureProperty:
+          return 'الأثاث والممتلكات الشخصية';
+        case CompensationType.moralCompensation:
+          return 'التعويض المعنوي';
+        case CompensationType.prisonCompensation:
+          return 'تعويض السجن';
+      }
+    }).join('، ');
+  }
+
+  /// الحصول على نص أنواع طلبات الحقوق
+  String _getRightsRequestTypesText(List<RightsRequestType> types) {
+    if (types.isEmpty) return 'غير محدد';
+    return types.map((type) {
+      switch (type) {
+        case RightsRequestType.pensionSalary:
+          return 'راتب التقاعد';
+        case RightsRequestType.residentialLand:
+          return 'أرض سكنية';
+      }
+    }).join('، ');
+  }
+
+  /// تنسيق التاريخ
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'غير محدد';
+    return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+  }
+
+  /// بناء واجهة النموذج العادي (للإدخال الجديد)
+  Widget _buildFormView() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        children: [
+          // مؤشر التقدم
+          LinearProgressIndicator(
+            value: (_currentStep + 1) / 5,
+            backgroundColor: AppColors.primaryLightColor,
+            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
+          ),
+          
+          Expanded(
+            child: Stepper(
+              currentStep: _currentStep,
+              onStepTapped: (step) {
+                // السماح بالانتقال للخطوات السابقة فقط
+                if (step <= _currentStep) {
+                  setState(() {
+                    _currentStep = step;
+                  });
+                }
+              },
+              controlsBuilder: (context, details) {
+                return Padding(
+                  padding: const EdgeInsets.only(top: 16.0),
+                  child: Row(
+                    children: [
+                      if (details.stepIndex > 0)
+                        CustomButton(
+                          text: 'السابق',
+                          onPressed: _previousStep,
+                          isOutlined: true,
+                        ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Consumer<PersonalDataProvider>(
+                          builder: (context, provider, child) {
+                            if (provider.isLoading) {
+                              return const LoadingWidget();
+                            }
+                            
+                            return CustomButton(
+                              text: details.stepIndex == 4 ? 'إرسال البيانات' : 'التالي',
+                              onPressed: _nextStep,
+                              isFullWidth: true,
+                              icon: details.stepIndex == 4 ? Icons.send : Icons.arrow_forward,
+                              isOutlined: false,
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              steps: [
+                _buildBasicDataStep(),
+                _buildNationalIdStep(),
+                _buildKuwaitDataStep(),
+                _buildOptionsStep(),
+                _buildDocumentsStep(),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
