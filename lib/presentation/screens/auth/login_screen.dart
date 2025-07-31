@@ -25,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isOtpMode = false;
   final _otpController = TextEditingController();
+  int _failedAttempts = 0; // عداد المحاولات الفاشلة
 
   @override
   void dispose() {
@@ -48,11 +49,29 @@ class _LoginScreenState extends State<LoginScreen> {
       
       if (success) {
         if (mounted) {
+          _failedAttempts = 0; // إعادة تعيين عداد المحاولات الفاشلة عند النجاح
           context.go(RouteNames.home);
         }
       } else {
         if (mounted) {
-          _showErrorSnackBar(authProvider.errorMessage ?? 'رمز التحقق غير صحيح');
+          _failedAttempts++;
+          String errorMessage = authProvider.errorMessage ?? 'رمز التحقق غير صحيح. يرجى التأكد من الرمز والمحاولة مرة أخرى.';
+          
+          // تحسين رسائل الخطأ لـ OTP
+          if (errorMessage.contains('otp_expired')) {
+            errorMessage = 'رمز التحقق منتهي الصلاحية. يرجى طلب رمز جديد.';
+          } else if (errorMessage.contains('invalid_otp')) {
+            errorMessage = 'رمز التحقق غير صحيح. يرجى التأكد من الرمز المدخل.';
+          } else if (errorMessage.contains('token_hash_not_found')) {
+            errorMessage = 'رمز التحقق غير موجود أو منتهي الصلاحية. يرجى طلب رمز جديد.';
+          }
+          
+          // إضافة نصائح بعد عدة محاولات فاشلة
+          if (_failedAttempts >= 3) {
+            errorMessage += '\n\nنصائح:\n• تأكد من إدخال الرمز كاملاً (6 أرقام)\n• تحقق من صندوق البريد والرسائل المحذوفة\n• جرب طلب رمز جديد';
+          }
+          
+          _showErrorSnackBar(errorMessage);
         }
       }
     } else {
@@ -64,15 +83,26 @@ class _LoginScreenState extends State<LoginScreen> {
       
       if (success) {
         if (mounted) {
+          _failedAttempts = 0; // إعادة تعيين عداد المحاولات الفاشلة عند النجاح
           context.go(RouteNames.home);
         }
       } else {
         if (mounted) {
+          _failedAttempts++; // زيادة عداد المحاولات الفاشلة
           final errorMessage = authProvider.errorMessage;
           if (errorMessage != null && errorMessage.contains('Email not confirmed')) {
+            // إذا كان البريد الإلكتروني غير مؤكد، انتقل إلى شاشة التأكيد
             context.go(RouteNames.confirmAccount, extra: _emailController.text.trim());
           } else {
-            _showErrorSnackBar(errorMessage ?? 'فشل في تسجيل الدخول');
+            // عرض رسالة الخطأ الواضحة مع نصائح إضافية
+            String displayMessage = errorMessage ?? 'فشل في تسجيل الدخول. يرجى التأكد من البيانات والمحاولة مرة أخرى.';
+            
+            // إضافة نصائح بعد عدة محاولات فاشلة
+            if (_failedAttempts >= 3) {
+              displayMessage += '\n\nنصائح:\n• تأكد من صحة البريد الإلكتروني\n• تأكد من صحة كلمة المرور\n• جرب استخدام رمز التحقق بدلاً من كلمة المرور';
+            }
+            
+            _showErrorSnackBar(displayMessage);
           }
         }
       }
@@ -94,15 +124,37 @@ class _LoginScreenState extends State<LoginScreen> {
       });
       _showSuccessSnackBar('تم إرسال رمز التحقق إلى بريدك الإلكتروني');
     } else {
-      _showErrorSnackBar(authProvider.errorMessage ?? 'فشل في إرسال رمز التحقق');
+      String errorMessage = authProvider.errorMessage ?? 'فشل في إرسال رمز التحقق. يرجى المحاولة مرة أخرى.';
+      
+      // تحسين رسائل الخطأ بناءً على النوع
+      if (errorMessage.contains('signup_disabled')) {
+        errorMessage = 'خدمة التسجيل معطلة حالياً. يرجى المحاولة لاحقاً.';
+      } else if (errorMessage.contains('over_email_send_rate_limit')) {
+        errorMessage = 'تم إرسال عدد كبير من الرسائل. يرجى الانتظار دقيقة ثم المحاولة مرة أخرى.';
+      } else if (errorMessage.contains('email_not_confirmed')) {
+        errorMessage = 'البريد الإلكتروني غير مؤكد. يرجى تأكيد حسابك أولاً من خلال الرابط المرسل إلى بريدك الإلكتروني.';
+      } else if (errorMessage.toLowerCase().contains('user not found')) {
+        errorMessage = 'لا يوجد حساب مسجل بهذا البريد الإلكتروني. يرجى إنشاء حساب جديد أولاً.';
+      }
+      
+      _showErrorSnackBar(errorMessage);
     }
   }
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 14),
+        ),
         backgroundColor: AppColors.errorColor,
+        duration: const Duration(seconds: 5), // زيادة مدة عرض الرسالة
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
       ),
     );
   }

@@ -107,8 +107,17 @@ class _ConfirmAccountScreenState extends State<ConfirmAccountScreen> {
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 14),
+        ),
         backgroundColor: AppColors.errorColor,
+        duration: const Duration(seconds: 5), // زيادة مدة عرض الرسالة
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
       ),
     );
   }
