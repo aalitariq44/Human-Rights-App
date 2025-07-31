@@ -18,7 +18,6 @@ class RouteNames {
   
   // مسارات المستندات
   static const String documentUpload = '/document-upload';
-  static const String documentView = '/document-view';
   
   // مسارات أخرى
   static const String settings = '/settings';

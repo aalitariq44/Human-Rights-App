@@ -128,16 +128,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                     _buildOptionCard(
-                      title: 'عرض المستندات',
-                      subtitle: 'استعرض المستندات المرفوعة',
-                      icon: Icons.folder_open,
-                      color: AppColors.infoColor,
-                      onTap: () {
-                        // التنقل لصفحة عرض المستندات
-                        context.go(RouteNames.documentView);
-                      },
-                    ),
-                    _buildOptionCard(
                       title: 'المساعدة',
                       subtitle: 'احصل على المساعدة والدعم',
                       icon: Icons.help_outline,
