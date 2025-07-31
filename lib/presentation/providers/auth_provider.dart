@@ -15,6 +15,12 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _user != null;
   
+  /// فحص ما إذا كان البريد الإلكتروني مؤكد
+  bool get isEmailConfirmed => _user?.emailConfirmedAt != null;
+  
+  /// فحص ما إذا كان المستخدم مسجل الدخول ومؤكد البريد الإلكتروني
+  bool get isAuthenticatedAndConfirmed => isAuthenticated && isEmailConfirmed;
+  
   AuthProvider() {
     _init();
   }
@@ -195,6 +201,18 @@ class AuthProvider extends ChangeNotifier {
       
       debugPrint('فشل في إنشاء الحساب');
       _setError('فشل في إنشاء الحساب');
+      _setLoading(false);
+      return false;
+    } on AuthApiException catch (e) {
+      debugPrint('AuthApiException في signUp: ${e.code} - ${e.message}');
+      String errorMessage = _translateOtpError(e.code, e.message);
+      _setError(errorMessage);
+      _setLoading(false);
+      return false;
+    } on AuthException catch (e) {
+      debugPrint('AuthException في signUp: ${e.message}');
+      String errorMessage = _translateAuthError(e.message);
+      _setError(errorMessage);
       _setLoading(false);
       return false;
     } catch (e) {

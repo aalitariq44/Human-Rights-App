@@ -51,7 +51,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             backgroundColor: AppColors.successColor,
           ),
         );
-        context.go(RouteNames.login);
+        // توجيه المستخدم إلى صفحة تأكيد الحساب بدلاً من تسجيل الدخول
+        context.go(RouteNames.confirmAccount, extra: _emailController.text.trim());
       }
     } else {
       if (mounted) {

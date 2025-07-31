@@ -18,6 +18,17 @@ class AppRouter {
     redirect: (context, state) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final isAuthenticated = authProvider.isAuthenticated;
+      final isEmailConfirmed = authProvider.isEmailConfirmed;
+      final isAuthenticatedAndConfirmed = authProvider.isAuthenticatedAndConfirmed;
+      
+      // إذا كان المستخدم مسجل الدخول لكن غير مؤكد البريد الإلكتروني
+      if (isAuthenticated && !isEmailConfirmed) {
+        // السماح بالوصول إلى صفحة تأكيد الحساب فقط
+        if (state.matchedLocation != RouteNames.confirmAccount) {
+          // نحتاج البريد الإلكتروني للتوجيه - يمكن الحصول عليه من المستخدم الحالي
+          return RouteNames.confirmAccount;
+        }
+      }
       
       // إذا كان المستخدم غير مسجل الدخول ويحاول الوصول لصفحة محمية
       if (!isAuthenticated) {
@@ -28,11 +39,12 @@ class AppRouter {
         }
       }
       
-      // إذا كان المستخدم مسجل الدخول ويحاول الوصول لصفحات المصادقة
-      if (isAuthenticated) {
+      // إذا كان المستخدم مسجل الدخول ومؤكد ويحاول الوصول لصفحات المصادقة
+      if (isAuthenticatedAndConfirmed) {
         if (state.matchedLocation == RouteNames.login ||
             state.matchedLocation == RouteNames.register ||
-            state.matchedLocation == RouteNames.splash) {
+            state.matchedLocation == RouteNames.splash ||
+            state.matchedLocation == RouteNames.confirmAccount) {
           return RouteNames.home;
         }
       }
@@ -63,7 +75,19 @@ class AppRouter {
       GoRoute(
         path: RouteNames.confirmAccount,
         name: 'confirm-account',
-        builder: (context, state) => ConfirmAccountScreen(email: state.extra as String),
+        builder: (context, state) {
+          // محاولة الحصول على البريد الإلكتروني من extra أو من المستخدم الحالي
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          String email = '';
+          
+          if (state.extra != null && state.extra is String) {
+            email = state.extra as String;
+          } else if (authProvider.user?.email != null) {
+            email = authProvider.user!.email!;
+          }
+          
+          return ConfirmAccountScreen(email: email);
+        },
       ),
       
       // الشاشة الرئيسية

@@ -50,7 +50,14 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success) {
         if (mounted) {
           _failedAttempts = 0; // إعادة تعيين عداد المحاولات الفاشلة عند النجاح
-          context.go(RouteNames.home);
+          
+          // التحقق من تأكيد البريد الإلكتروني
+          if (authProvider.isEmailConfirmed) {
+            context.go(RouteNames.home);
+          } else {
+            // إذا لم يكن البريد الإلكتروني مؤكد، توجيه المستخدم إلى صفحة التأكيد
+            context.go(RouteNames.confirmAccount, extra: _emailController.text.trim());
+          }
         }
       } else {
         if (mounted) {
@@ -84,7 +91,14 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success) {
         if (mounted) {
           _failedAttempts = 0; // إعادة تعيين عداد المحاولات الفاشلة عند النجاح
-          context.go(RouteNames.home);
+          
+          // التحقق من تأكيد البريد الإلكتروني حتى لو نجح تسجيل الدخول
+          if (authProvider.isEmailConfirmed) {
+            context.go(RouteNames.home);
+          } else {
+            // إذا لم يكن البريد الإلكتروني مؤكد، توجيه المستخدم إلى صفحة التأكيد
+            context.go(RouteNames.confirmAccount, extra: _emailController.text.trim());
+          }
         }
       } else {
         if (mounted) {
