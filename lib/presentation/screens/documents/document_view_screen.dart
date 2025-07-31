@@ -460,32 +460,24 @@ class _DocumentViewScreenState extends State<DocumentViewScreen> {
         return Icons.home;
       case DocumentType.redCrossInternational:
         return Icons.medical_services;
+      case DocumentType.birthCertificate:
+        return Icons.child_care;
+      case DocumentType.marriageCertificate:
+        return Icons.favorite;
+      case DocumentType.educationCertificate:
+        return Icons.school;
+      case DocumentType.workContract:
+        return Icons.work;
+      case DocumentType.medicalReport:
+        return Icons.local_hospital;
+      case DocumentType.bankStatement:
+        return Icons.account_balance;
+      case DocumentType.propertyDocuments:
+        return Icons.home_work;
+      case DocumentType.custom:
+        return Icons.note_add;
       case DocumentType.other:
         return Icons.description;
-      case DocumentType.birthCertificate:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case DocumentType.marriageCertificate:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case DocumentType.educationCertificate:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case DocumentType.workContract:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case DocumentType.medicalReport:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case DocumentType.bankStatement:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case DocumentType.propertyDocuments:
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case DocumentType.custom:
-        // TODO: Handle this case.
-        throw UnimplementedError();
     }
   }
 

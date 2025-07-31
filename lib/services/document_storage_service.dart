@@ -169,10 +169,19 @@ class DocumentStorageService {
   String _generateFilePath(String userId, DocumentType documentType, String fileName) {
     final folderMap = {
       DocumentType.personalPhoto: 'profile',
+      DocumentType.passportCopy: 'official-documents/passport',
       DocumentType.iraqiAffairsDept: 'official-documents/iraqi-affairs',
       DocumentType.kuwaitImmigration: 'official-documents/kuwait-immigration',
       DocumentType.validResidence: 'official-documents/residence-permit',
       DocumentType.redCrossInternational: 'official-documents/red-cross',
+      DocumentType.birthCertificate: 'official-documents/birth-certificate',
+      DocumentType.marriageCertificate: 'official-documents/marriage-certificate',
+      DocumentType.educationCertificate: 'official-documents/education-certificate',
+      DocumentType.workContract: 'official-documents/work-contract',
+      DocumentType.medicalReport: 'official-documents/medical-report',
+      DocumentType.bankStatement: 'official-documents/bank-statement',
+      DocumentType.propertyDocuments: 'official-documents/property-documents',
+      DocumentType.custom: 'official-documents/custom',
       DocumentType.other: 'official-documents/other',
     };
 
