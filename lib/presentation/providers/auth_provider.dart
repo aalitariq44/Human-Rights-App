@@ -69,6 +69,7 @@ class AuthProvider extends ChangeNotifier {
       
       if (response.user != null) {
         _user = response.user;
+        
         _setLoading(false);
         return true;
       }
@@ -276,6 +277,7 @@ class AuthProvider extends ChangeNotifier {
       
       if (response.user != null) {
         _user = response.user;
+        
         _setLoading(false);
         return true;
       }

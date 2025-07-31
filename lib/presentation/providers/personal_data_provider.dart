@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/personal_data_entity.dart';
 import '../../domain/entities/enums.dart';
-import '../../services/encryption_service.dart';
 
 /// موفر البيانات الشخصية
 class PersonalDataProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
-  final EncryptionService _encryptionService = EncryptionService.instance;
   
   PersonalDataEntity? _personalData;
   bool _isLoading = false;
@@ -31,9 +29,6 @@ class PersonalDataProvider extends ChangeNotifier {
         return false;
       }
       
-      // تشفير الرقم الوطني
-      final encryptedNationalId = await _encryptionService.encrypt(data['nationalId']);
-      
       // إعداد البيانات للإرسال وفقاً لهيكل قاعدة البيانات
       final personalDataMap = {
         'user_id': user.id,
@@ -43,7 +38,7 @@ class PersonalDataProvider extends ChangeNotifier {
         'birth_date': data['birthDate']?.toString(),
         'birth_place': data['birthPlace']?.toString().trim(),
         'phone_number': data['phoneNumber']?.toString().trim(),
-        'national_id_encrypted': encryptedNationalId,
+        'national_id_encrypted': data['nationalId']?.toString().trim(),
         'national_id_issue_year': data['nationalIdIssueYear'] is int 
             ? data['nationalIdIssueYear'] 
             : int.tryParse(data['nationalIdIssueYear']?.toString() ?? ''),
@@ -182,38 +177,10 @@ class PersonalDataProvider extends ChangeNotifier {
       _setLoading(false);
       notifyListeners();
     } catch (e) {
-      // معالجة خاصة لأخطاء فك التشفير
-      if (e.toString().contains('فشل في فك تشفير البيانات') || 
-          e.toString().contains('Invalid or corrupted pad block') ||
-          e.toString().contains('تالفة أو تم تغيير مفتاح التشفير')) {
-        _setError('حدث خطأ في فك تشفير البيانات المحفوظة. يرجى استخدام خيار "حاول مرة أخرى" أو الاتصال بالدعم الفني.');
-      } else {
-        final errorMessage = _handleGeneralError(e);
-        _setError(errorMessage);
-      }
+      final errorMessage = _handleGeneralError(e);
+      _setError(errorMessage);
       _setLoading(false);
       notifyListeners();
-    }
-  }
-  
-  /// إعادة محاولة جلب البيانات مع إعادة تعيين التشفير
-  Future<bool> retryWithEncryptionReset() async {
-    try {
-      _setLoading(true);
-      _clearError();
-      
-      // إعادة تعيين خدمة التشفير
-      await _encryptionService.reset();
-      
-      // محاولة جلب البيانات مرة أخرى
-      await fetchPersonalData();
-      
-      return true;
-    } catch (e) {
-      _setError('فشل في إعادة تعيين التشفير: $e');
-      _setLoading(false);
-      notifyListeners();
-      return false;
     }
   }
   
@@ -261,9 +228,6 @@ class PersonalDataProvider extends ChangeNotifier {
   /// تحويل البيانات من الخريطة إلى Entity
   Future<PersonalDataEntity> _mapToEntity(Map<String, dynamic> data) async {
     try {
-      // فك تشفير الرقم الوطني
-      final decryptedNationalId = await _encryptionService.decrypt(data['national_id_encrypted']);
-      
       return PersonalDataEntity(
         id: data['id'],
         userId: data['user_id'],
@@ -273,7 +237,7 @@ class PersonalDataProvider extends ChangeNotifier {
         birthDate: DateTime.parse(data['birth_date']),
         birthPlace: data['birth_place'],
         phoneNumber: data['phone_number'],
-        nationalId: decryptedNationalId,
+        nationalId: data['national_id_encrypted'],
         nationalIdIssueYear: data['national_id_issue_year'],
         nationalIdIssuer: data['national_id_issuer'],
         fullNameKuwait: data['full_name_kuwait'],
@@ -310,16 +274,6 @@ class PersonalDataProvider extends ChangeNotifier {
             : null,
       );
     } catch (e) {
-      // إذا كانت المشكلة في فك التشفير، قدم حلاً واضحاً
-      if (e.toString().contains('فشل في فك تشفير البيانات') || 
-          e.toString().contains('Invalid or corrupted pad block') ||
-          e.toString().contains('تالفة أو تم تغيير مفتاح التشفير')) {
-        throw Exception('حدث خطأ في فك تشفير البيانات المحفوظة. قد يكون السبب تغيير في نظام التشفير.\n\n'
-                       'الحلول المقترحة:\n'
-                       '• إعادة تشغيل التطبيق\n'
-                       '• إعادة إدخال البيانات الشخصية\n'
-                       '• الاتصال بالدعم الفني إذا استمرت المشكلة');
-      }
       throw Exception('خطأ في معالجة البيانات: $e');
     }
   }
@@ -674,7 +628,7 @@ class PersonalDataProvider extends ChangeNotifier {
         return 'مكان الولادة';
       case 'phone_number':
         return 'رقم الهاتف';
-      case 'national_id_encrypted':
+      case 'national_id':
         return 'رقم الهوية الوطنية';
       case 'national_id_issue_year':
         return 'سنة إصدار الهوية';

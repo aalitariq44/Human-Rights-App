@@ -14,8 +14,8 @@ CREATE TABLE public.user_personal_data (
   birth_place TEXT NOT NULL,
   phone_number TEXT NOT NULL,
   
-  -- بيانات البطاقة الوطنية (مشفرة)
-  national_id_encrypted TEXT NOT NULL,
+  -- بيانات البطاقة الوطنية
+  national_id TEXT NOT NULL,
   national_id_issue_year INTEGER NOT NULL,
   national_id_issuer TEXT NOT NULL,
   
@@ -149,6 +149,6 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 COMMENT ON TABLE public.user_personal_data IS 'بيانات المواطنين العراقيين المطالبين بحقوقهم في الكويت';
 COMMENT ON TABLE public.activity_logs IS 'سجل أنشطة المستخدمين في النظام';
 
-COMMENT ON COLUMN public.user_personal_data.national_id_encrypted IS 'رقم الهوية الوطنية مشفر لحماية الخصوصية';
+COMMENT ON COLUMN public.user_personal_data.national_id IS 'رقم الهوية الوطنية';
 COMMENT ON COLUMN public.user_personal_data.compensation_type IS 'أنواع التعويضات المطلوبة (مصفوفة)';
 COMMENT ON COLUMN public.user_personal_data.rights_request_type IS 'أنواع الحقوق المطلوبة (مصفوفة)';

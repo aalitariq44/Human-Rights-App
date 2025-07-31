@@ -9,7 +9,6 @@ import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/theme_provider.dart';
 import 'presentation/providers/personal_data_provider.dart';
 import 'presentation/providers/document_provider.dart';
-import 'services/encryption_service.dart';
 
 /// النقطة الرئيسية لدخول التطبيق
 void main() async {
@@ -38,9 +37,6 @@ void main() async {
       anonKey: SupabaseConfig.apiKey,
       debug: false, // يمكن تفعيلها في بيئة التطوير
     );
-    
-    // تهيئة خدمة التشفير
-    await EncryptionService.initialize();
     
     // تشغيل التطبيق
     runApp(const HoqoqiMainApp());
