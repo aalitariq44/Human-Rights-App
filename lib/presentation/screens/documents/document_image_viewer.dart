@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../domain/entities/document_entity.dart';
 
 /// عارض الصور للمستندات
@@ -15,7 +16,7 @@ class DocumentImageViewer extends StatefulWidget {
 }
 
 class _DocumentImageViewerState extends State<DocumentImageViewer> {
-  bool _isLoading = true;
+  // keep track of loading error state
   bool _hasError = false;
 
   @override
@@ -37,61 +38,46 @@ class _DocumentImageViewerState extends State<DocumentImageViewer> {
         ],
       ),
       body: Center(
-        child: _hasError 
-          ? _buildErrorWidget()
-          : _isLoading
-            ? _buildLoadingWidget()
+        child: _hasError
+            ? _buildErrorWidget()
             : _buildImageWidget(),
       ),
     );
   }
 
-  /// بناء عارض الصورة
+  /// بناء عارض الصورة باستخدام CachedNetworkImage
   Widget _buildImageWidget() {
-    return InteractiveViewer(
-      panEnabled: true,
-      boundaryMargin: const EdgeInsets.all(20),
-      minScale: 0.5,
-      maxScale: 4.0,
-      child: Image.network(
-        widget.document.fileUrl!,
-        fit: BoxFit.contain,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) {
-            setState(() {
-              _isLoading = false;
-            });
-            return child;
-          }
-          return _buildLoadingWidget();
-        },
-        errorBuilder: (context, error, stackTrace) {
-          setState(() {
-            _hasError = true;
-            _isLoading = false;
-          });
-          return _buildErrorWidget();
-        },
+    return CachedNetworkImage(
+      imageUrl: widget.document.fileUrl!,
+      placeholder: (context, url) => const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        ),
       ),
+      imageBuilder: (context, imageProvider) => InteractiveViewer(
+        panEnabled: true,
+        boundaryMargin: const EdgeInsets.all(20),
+        minScale: 0.5,
+        maxScale: 4.0,
+        child: Image(
+          image: imageProvider,
+          fit: BoxFit.contain,
+        ),
+      ),
+      errorWidget: (context, url, error) {
+        debugPrint('Error loading document image. URL: $url, Error: $error');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _hasError = true;
+            });
+          }
+        });
+        return _buildErrorWidget();
+      },
     );
   }
 
-  /// بناء ويدجت التحميل
-  Widget _buildLoadingWidget() {
-    return const Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-        ),
-        SizedBox(height: 16),
-        Text(
-          'جاري تحميل الصورة...',
-          style: TextStyle(color: Colors.white),
-        ),
-      ],
-    );
-  }
 
   /// بناء ويدجت الخطأ
   Widget _buildErrorWidget() {
@@ -111,8 +97,8 @@ class _DocumentImageViewerState extends State<DocumentImageViewer> {
         const SizedBox(height: 16),
         ElevatedButton(
           onPressed: () {
+            // Reset error state to retry loading
             setState(() {
-              _isLoading = true;
               _hasError = false;
             });
           },
