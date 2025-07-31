@@ -182,10 +182,38 @@ class PersonalDataProvider extends ChangeNotifier {
       _setLoading(false);
       notifyListeners();
     } catch (e) {
-      final errorMessage = _handleGeneralError(e);
-      _setError(errorMessage);
+      // معالجة خاصة لأخطاء فك التشفير
+      if (e.toString().contains('فشل في فك تشفير البيانات') || 
+          e.toString().contains('Invalid or corrupted pad block') ||
+          e.toString().contains('تالفة أو تم تغيير مفتاح التشفير')) {
+        _setError('حدث خطأ في فك تشفير البيانات المحفوظة. يرجى استخدام خيار "حاول مرة أخرى" أو الاتصال بالدعم الفني.');
+      } else {
+        final errorMessage = _handleGeneralError(e);
+        _setError(errorMessage);
+      }
       _setLoading(false);
       notifyListeners();
+    }
+  }
+  
+  /// إعادة محاولة جلب البيانات مع إعادة تعيين التشفير
+  Future<bool> retryWithEncryptionReset() async {
+    try {
+      _setLoading(true);
+      _clearError();
+      
+      // إعادة تعيين خدمة التشفير
+      await _encryptionService.reset();
+      
+      // محاولة جلب البيانات مرة أخرى
+      await fetchPersonalData();
+      
+      return true;
+    } catch (e) {
+      _setError('فشل في إعادة تعيين التشفير: $e');
+      _setLoading(false);
+      notifyListeners();
+      return false;
     }
   }
   
@@ -232,54 +260,69 @@ class PersonalDataProvider extends ChangeNotifier {
   
   /// تحويل البيانات من الخريطة إلى Entity
   Future<PersonalDataEntity> _mapToEntity(Map<String, dynamic> data) async {
-    // فك تشفير الرقم الوطني
-    final decryptedNationalId = await _encryptionService.decrypt(data['national_id_encrypted']);
-    
-    return PersonalDataEntity(
-      id: data['id'],
-      userId: data['user_id'],
-      fullNameIraq: data['full_name_iraq'],
-      motherName: data['mother_name'],
-      currentProvince: data['current_province'],
-      birthDate: DateTime.parse(data['birth_date']),
-      birthPlace: data['birth_place'],
-      phoneNumber: data['phone_number'],
-      nationalId: decryptedNationalId,
-      nationalIdIssueYear: data['national_id_issue_year'],
-      nationalIdIssuer: data['national_id_issuer'],
-      fullNameKuwait: data['full_name_kuwait'],
-      kuwaitAddress: data['kuwait_address'],
-      kuwaitEducationLevel: data['kuwait_education_level'],
-      familyMembersCount: data['family_members_count'],
-      adultsOver18Count: data['adults_over_18_count'],
-      exitMethod: data['exit_method'] != null 
-          ? _findExitMethodByName(data['exit_method'])
-          : null,
-      compensationTypes: data['compensation_type'] != null
-          ? (data['compensation_type'] as List)
-              .map((e) => _findCompensationTypeByName(e.toString()))
-              .where((type) => type != null)
-              .cast<CompensationType>()
-              .toList()
-          : [],
-      kuwaitJobType: data['kuwait_job_type'] != null
-          ? _findKuwaitJobTypeByName(data['kuwait_job_type'])
-          : null,
-      kuwaitOfficialStatus: data['kuwait_official_status'] != null
-          ? _findKuwaitOfficialStatusByName(data['kuwait_official_status'])
-          : null,
-      rightsRequestTypes: data['rights_request_type'] != null
-          ? (data['rights_request_type'] as List)
-              .map((e) => _findRightsRequestTypeByName(e.toString()))
-              .where((type) => type != null)
-              .cast<RightsRequestType>()
-              .toList()
-          : [],
-      createdAt: DateTime.parse(data['created_at']),
-      updatedAt: data['updated_at'] != null 
-          ? DateTime.parse(data['updated_at']) 
-          : null,
-    );
+    try {
+      // فك تشفير الرقم الوطني
+      final decryptedNationalId = await _encryptionService.decrypt(data['national_id_encrypted']);
+      
+      return PersonalDataEntity(
+        id: data['id'],
+        userId: data['user_id'],
+        fullNameIraq: data['full_name_iraq'],
+        motherName: data['mother_name'],
+        currentProvince: data['current_province'],
+        birthDate: DateTime.parse(data['birth_date']),
+        birthPlace: data['birth_place'],
+        phoneNumber: data['phone_number'],
+        nationalId: decryptedNationalId,
+        nationalIdIssueYear: data['national_id_issue_year'],
+        nationalIdIssuer: data['national_id_issuer'],
+        fullNameKuwait: data['full_name_kuwait'],
+        kuwaitAddress: data['kuwait_address'],
+        kuwaitEducationLevel: data['kuwait_education_level'],
+        familyMembersCount: data['family_members_count'],
+        adultsOver18Count: data['adults_over_18_count'],
+        exitMethod: data['exit_method'] != null 
+            ? _findExitMethodByName(data['exit_method'])
+            : null,
+        compensationTypes: data['compensation_type'] != null
+            ? (data['compensation_type'] as List)
+                .map((e) => _findCompensationTypeByName(e.toString()))
+                .where((type) => type != null)
+                .cast<CompensationType>()
+                .toList()
+            : [],
+        kuwaitJobType: data['kuwait_job_type'] != null
+            ? _findKuwaitJobTypeByName(data['kuwait_job_type'])
+            : null,
+        kuwaitOfficialStatus: data['kuwait_official_status'] != null
+            ? _findKuwaitOfficialStatusByName(data['kuwait_official_status'])
+            : null,
+        rightsRequestTypes: data['rights_request_type'] != null
+            ? (data['rights_request_type'] as List)
+                .map((e) => _findRightsRequestTypeByName(e.toString()))
+                .where((type) => type != null)
+                .cast<RightsRequestType>()
+                .toList()
+            : [],
+        createdAt: DateTime.parse(data['created_at']),
+        updatedAt: data['updated_at'] != null 
+            ? DateTime.parse(data['updated_at']) 
+            : null,
+      );
+    } catch (e) {
+      // إذا كانت المشكلة في فك التشفير، قدم حلاً واضحاً
+      if (e.toString().contains('فشل في فك تشفير البيانات') || 
+          e.toString().contains('Invalid or corrupted pad block') ||
+          e.toString().contains('تالفة أو تم تغيير مفتاح التشفير')) {
+        throw Exception('حدث خطأ في فك تشفير البيانات المحفوظة. قد يكون السبب تغيير في نظام التشفير.\n\n'
+                       'الحلول المقترحة:\n'
+                       '• إعادة تشغيل التطبيق\n'
+                       '• إعادة إدخال البيانات الشخصية\n'
+                       '• الاتصال بالدعم الفني إذا استمرت المشكلة');
+      }
+      throw Exception('خطأ في معالجة البيانات: $e');
+    }
+  }
   }
   
   /// معالجة أخطاء PostgreSQL

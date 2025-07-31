@@ -9,6 +9,7 @@ import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/loading_widget.dart';
 import 'package:go_router/go_router.dart';
 import '../../navigation/route_names.dart';
+import '../../../services/quick_diagnostic.dart';
 
 /// شاشة رفع المستندات
 class DocumentUploadScreen extends StatefulWidget {
@@ -41,15 +42,16 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
 
   /// تحميل مستندات المستخدم
   void _loadUserDocuments() {
-    // تحميل جميع المستندات بدون الحاجة للبيانات الشخصية
     final documentProvider = Provider.of<DocumentProvider>(context, listen: false);
-    // يمكن تحميل المستندات المحفوظة محلياً أو حسب معرف المستخدم إذا توفر
     final personalDataProvider = Provider.of<PersonalDataProvider>(context, listen: false);
     
-    if (personalDataProvider.personalData?.id != null) {
-      documentProvider.loadUserDocuments(personalDataProvider.personalData!.id!);
-    }
-    // إذا لم تتوفر البيانات الشخصية، يمكن للمستخدم رفع المستندات بدونها
+    // تحميل البيانات الشخصية أولاً
+    personalDataProvider.fetchPersonalData().then((_) {
+      // ثم تحميل المستندات إذا كانت البيانات الشخصية موجودة
+      if (personalDataProvider.personalData?.id != null) {
+        documentProvider.loadUserDocuments(personalDataProvider.personalData!.id!);
+      }
+    });
   }
 
   @override
@@ -148,22 +150,83 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
 
   /// بناء المحتوى الرئيسي
   Widget _buildContent(DocumentProvider documentProvider) {
-    return SingleChildScrollView(
+    return Consumer<PersonalDataProvider>(
+      builder: (context, personalDataProvider, child) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // رسالة الخطأ
+              if (documentProvider.errorMessage != null)
+                _buildErrorMessage(documentProvider.errorMessage!),
+
+              // رسالة عدم وجود بيانات شخصية
+              if (personalDataProvider.personalData?.id == null)
+                _buildNoPersonalDataWarning(),
+
+              // نموذج رفع مستند جديد
+              _buildUploadForm(),
+
+              const SizedBox(height: 24),
+
+              // قائمة المستندات المرفوعة
+              _buildDocumentsList(documentProvider),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// بناء تحذير عدم وجود بيانات شخصية
+  Widget _buildNoPersonalDataWarning() {
+    return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.orange[50],
+        border: Border.all(color: Colors.orange[300]!),
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // رسالة الخطأ
-          if (documentProvider.errorMessage != null)
-            _buildErrorMessage(documentProvider.errorMessage!),
-
-          // نموذج رفع مستند جديد
-          _buildUploadForm(),
-
-          const SizedBox(height: 24),
-
-          // قائمة المستندات المرفوعة
-          _buildDocumentsList(documentProvider),
+          Row(
+            children: [
+              Icon(Icons.warning, color: Colors.orange[700]),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'يجب إرسال البيانات الشخصية أولاً',
+                  style: TextStyle(
+                    color: Colors.orange[700],
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'لا يمكن رفع المستندات قبل إرسال البيانات الشخصية. يرجى الذهاب لصفحة البيانات الشخصية وإرسال بياناتك أولاً.',
+            style: TextStyle(color: Colors.orange[700]),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => context.go('/personal-data'),
+              icon: const Icon(Icons.person_add, size: 16),
+              label: const Text('الذهاب للبيانات الشخصية'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -171,6 +234,9 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
 
   /// بناء رسالة الخطأ
   Widget _buildErrorMessage(String message) {
+    // التحقق من وجود خطأ 404
+    final is404Error = message.contains('404') || message.contains('Not Found');
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -180,23 +246,68 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
         border: Border.all(color: Colors.red[300]!),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.error_outline, color: Colors.red[700]),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: Colors.red[700]),
+          Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.red[700]),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  message,
+                  style: TextStyle(color: Colors.red[700]),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                color: Colors.red[700],
+                onPressed: () {
+                  Provider.of<DocumentProvider>(context, listen: false).clearError();
+                },
+              ),
+            ],
+          ),
+          if (is404Error) ...[
+            const SizedBox(height: 8),
+            const Divider(),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(
+                  Icons.lightbulb_outline,
+                  color: Colors.orange,
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'هذا خطأ 404 - قد يكون السبب عدم تكوين Supabase بشكل صحيح',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.orange,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close),
-            color: Colors.red[700],
-            onPressed: () {
-              Provider.of<DocumentProvider>(context, listen: false).clearError();
-            },
-          ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _runQuickDiagnostic,
+                icon: const Icon(Icons.healing, size: 16),
+                label: const Text('تشخيص المشكلة'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  textStyle: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -204,40 +315,47 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
 
   /// بناء نموذج رفع المستند
   Widget _buildUploadForm() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'رفع مستند جديد',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+    return Consumer<PersonalDataProvider>(
+      builder: (context, personalDataProvider, child) {
+        final hasPersonalData = personalDataProvider.personalData?.id != null;
+        
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'رفع مستند جديد',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: hasPersonalData ? null : Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // نوع المستند
+                _buildDocumentTypeDropdown(),
+
+                const SizedBox(height: 16),
+
+                // اسم المستند
+                _buildDocumentNameField(),
+
+                const SizedBox(height: 16),
+
+                // اختيار الملف
+                _buildFileSelection(),
+
+                const SizedBox(height: 16),
+
+                // أزرار الرفع
+                _buildUploadButtons(),
+              ],
             ),
-            const SizedBox(height: 16),
-
-            // نوع المستند
-            _buildDocumentTypeDropdown(),
-
-            const SizedBox(height: 16),
-
-            // اسم المستند
-            _buildDocumentNameField(),
-
-            const SizedBox(height: 16),
-
-            // اختيار الملف
-            _buildFileSelection(),
-
-            const SizedBox(height: 16),
-
-            // أزرار الرفع
-            _buildUploadButtons(),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -693,9 +811,22 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     final personalDataProvider = Provider.of<PersonalDataProvider>(context, listen: false);
     final documentProvider = Provider.of<DocumentProvider>(context, listen: false);
 
-    // الحصول على معرف البيانات الشخصية أو استخدام معرف افتراضي
-    String personalDataId = personalDataProvider.personalData?.id ?? 'temp_user_${DateTime.now().millisecondsSinceEpoch}';
+    // التحقق من وجود البيانات الشخصية
+    if (personalDataProvider.personalData?.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يجب إرسال البيانات الشخصية أولاً قبل رفع المستندات'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      
+      // توجيه المستخدم لصفحة البيانات الشخصية
+      context.go('/personal-data');
+      return;
+    }
 
+    String personalDataId = personalDataProvider.personalData!.id!;
     final file = File(_selectedFilePath!);
     
     // تحديد وصف المستند
@@ -793,6 +924,90 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
         return Icons.picture_as_pdf;
       default:
         return Icons.description;
+    }
+  }
+
+  /// تشغيل التشخيص السريع
+  Future<void> _runQuickDiagnostic() async {
+    // إظهار مؤشر التحميل
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('جاري تشخيص المشكلة...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // تشغيل التشخيص
+      await QuickDiagnostic.runQuickCheck();
+      
+      // إغلاق مؤشر التحميل
+      if (mounted) Navigator.of(context).pop();
+      
+      // إظهار رسالة للمستخدم
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.info, color: Colors.blue),
+                SizedBox(width: 8),
+                Text('نتائج التشخيص'),
+              ],
+            ),
+            content: const Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('تم تشغيل التشخيص بنجاح.'),
+                SizedBox(height: 8),
+                Text(
+                  'يرجى فحص وحدة التحكم (Console) لرؤية النتائج التفصيلية.',
+                  style: TextStyle(fontSize: 14),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'إذا رأيت أي ❌ في النتائج، يجب حل تلك المشاكل أولاً.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.orange,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('حسناً'),
+              ),
+            ],
+          ),
+        );
+      }
+      
+    } catch (e) {
+      // إغلاق مؤشر التحميل
+      if (mounted) Navigator.of(context).pop();
+      
+      // إظهار رسالة خطأ
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ في التشخيص: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }

@@ -37,8 +37,8 @@ class EncryptionService {
       // إنشاء المُشفر
       _encrypter = Encrypter(AES(key));
       
-      // إنشاء IV ثابت (في التطبيق الحقيقي يُفضل استخدام IV عشوائي لكل تشفير)
-      _iv = IV.fromSecureRandom(16);
+      // إنشاء IV ثابت (مستخدم نفس IV لضمان استقرار فك التشفير)
+      _iv = await _getOrCreateIV();
       
       _isInitialized = true;
       
@@ -72,6 +72,32 @@ class EncryptionService {
     }
   }
   
+  /// الحصول على IV أو إنشاء واحد جديد
+  Future<IV> _getOrCreateIV() async {
+    const String ivName = 'encryption_iv';
+    try {
+      // محاولة الحصول على IV المخزن
+      String? storedIV = await _storage.read(key: ivName);
+      
+      if (storedIV != null) {
+        // فك تشفير IV المخزن
+        final ivBytes = base64Decode(storedIV);
+        return IV(Uint8List.fromList(ivBytes));
+      } else {
+        // إنشاء IV جديد
+        final iv = IV.fromSecureRandom(16);
+        
+        // تخزين IV
+        final ivBase64 = base64Encode(iv.bytes);
+        await _storage.write(key: ivName, value: ivBase64);
+        
+        return iv;
+      }
+    } catch (e) {
+      throw Exception('فشل في الحصول على IV التشفير: $e');
+    }
+  }
+  
   /// تشفير النص
   Future<String> encrypt(String plainText) async {
     try {
@@ -92,7 +118,16 @@ class EncryptionService {
       final encrypted = Encrypted.fromBase64(encryptedText);
       return _encrypter.decrypt(encrypted, iv: _iv);
     } catch (e) {
-      throw Exception('فشل في فك تشفير البيانات: $e');
+      // معالجة خاصة لأخطاء فك التشفير الشائعة
+      if (e.toString().contains('Invalid or corrupted pad block') ||
+          e.toString().contains('pad block') ||
+          e.toString().contains('BadPaddingException')) {
+        throw Exception('فشل في فك تشفير البيانات: البيانات المشفرة تالفة أو تم تغيير مفتاح التشفير. يرجى إعادة إدخال البيانات.');
+      } else if (e.toString().contains('Invalid argument(s)')) {
+        throw Exception('فشل في فك تشفير البيانات: تنسيق البيانات المشفرة غير صحيح.');
+      } else {
+        throw Exception('فشل في فك تشفير البيانات: $e');
+      }
     }
   }
   
@@ -130,10 +165,12 @@ class EncryptionService {
     return computedHash == hash;
   }
   
-  /// مسح المفتاح المخزن (للأمان)
+  /// مسح المفتاح والـ IV المخزنين (للأمان)
   Future<void> clearStoredKey() async {
+    const String ivName = 'encryption_iv';
     try {
       await _storage.delete(key: _keyName);
+      await _storage.delete(key: ivName);
     } catch (e) {
       throw Exception('فشل في مسح مفتاح التشفير: $e');
     }
@@ -143,6 +180,7 @@ class EncryptionService {
   Future<void> reset() async {
     try {
       await clearStoredKey();
+      _isInitialized = false;
       await _initEncryption();
     } catch (e) {
       throw Exception('فشل في إعادة تعيين خدمة التشفير: $e');
