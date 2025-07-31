@@ -128,13 +128,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                     _buildOptionCard(
-                      title: 'عرض البيانات',
-                      subtitle: 'استعرض البيانات المُدخلة سابقاً',
-                      icon: Icons.visibility,
+                      title: 'عرض المستندات',
+                      subtitle: 'استعرض المستندات المرفوعة',
+                      icon: Icons.folder_open,
                       color: AppColors.infoColor,
                       onTap: () {
-                        // التنقل لصفحة عرض البيانات
-                        context.go(RouteNames.personalDataView);
+                        // التنقل لصفحة عرض المستندات
+                        context.go(RouteNames.documentView);
                       },
                     ),
                     _buildOptionCard(

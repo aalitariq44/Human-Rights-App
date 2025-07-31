@@ -9,6 +9,8 @@ import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/personal_data/personal_data_form_screen.dart';
+import '../screens/documents/document_upload_screen.dart';
+import '../screens/documents/document_view_screen.dart';
 import 'route_names.dart';
 
 /// مسارات التطبيق
@@ -112,11 +114,17 @@ class AppRouter {
       ),
       
       // مسارات المستندات
-      // GoRoute(
-      //   path: RouteNames.documentUpload,
-      //   name: 'document-upload',
-      //   builder: (context, state) => const DocumentUploadScreen(),
-      // ),
+      GoRoute(
+        path: RouteNames.documentUpload,
+        name: 'document-upload',
+        builder: (context, state) => const DocumentUploadScreen(),
+      ),
+
+      GoRoute(
+        path: RouteNames.documentView,
+        name: 'document-view',
+        builder: (context, state) => const DocumentViewScreen(),
+      ),
     ],
     
     // معالجة الأخطاء

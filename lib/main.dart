@@ -8,6 +8,7 @@ import 'config/supabase_config.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/theme_provider.dart';
 import 'presentation/providers/personal_data_provider.dart';
+import 'presentation/providers/document_provider.dart';
 import 'services/encryption_service.dart';
 
 /// النقطة الرئيسية لدخول التطبيق
@@ -67,6 +68,9 @@ class HoqoqiMainApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => PersonalDataProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => DocumentProvider(),
         ),
       ],
       child: const HoqoqiApp(),

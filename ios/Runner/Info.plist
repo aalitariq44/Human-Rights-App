@@ -45,5 +45,15 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- صلاحيات الكاميرا والمعرض والملفات -->
+	<key>NSCameraUsageDescription</key>
+	<string>يحتاج التطبيق إلى الوصول للكاميرا لتصوير المستندات والوثائق المطلوبة</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>يحتاج التطبيق إلى الوصول لمعرض الصور لاختيار المستندات والصور المطلوبة</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>يحتاج التطبيق إلى حفظ الصور المُلتقطة في معرض الصور</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>يحتاج التطبيق إلى الوصول للميكروفون لتسجيل مقاطع الفيديو (اختياري)</string>
 </dict>
 </plist>
