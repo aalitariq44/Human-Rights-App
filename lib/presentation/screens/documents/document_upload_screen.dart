@@ -10,6 +10,8 @@ import '../../widgets/common/loading_widget.dart';
 import 'package:go_router/go_router.dart';
 import '../../navigation/route_names.dart';
 import '../../../services/quick_diagnostic.dart';
+import '../../../services/document_viewer_service.dart';
+import 'document_image_viewer.dart';
 
 /// شاشة رفع المستندات
 class DocumentUploadScreen extends StatefulWidget {
@@ -866,13 +868,56 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   }
 
   /// عرض المستند
-  void _viewDocument(dynamic document) {
-    // TODO: تنفيذ عرض المستند
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('سيتم تنفيذ عرض المستند قريباً'),
-      ),
-    );
+  void _viewDocument(dynamic document) async {
+    if (document.fileUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('رابط المستند غير متاح'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // التحقق من نوع الملف
+    if (DocumentViewerService.isImageFile(document.originalFileName)) {
+      // عرض الصور داخل التطبيق
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => DocumentImageViewer(document: document),
+        ),
+      );
+    } else if (DocumentViewerService.isPdfFile(document.originalFileName)) {
+      // فتح ملفات PDF في مشغل خارجي
+      final success = await DocumentViewerService.openDocument(document);
+      
+      if (success) {
+        DocumentViewerService.showSuccessMessage(
+          context, 
+          'تم فتح المستند في التطبيق الخارجي'
+        );
+      } else {
+        DocumentViewerService.showErrorMessage(
+          context, 
+          'لا يمكن فتح المستند. تأكد من وجود تطبيق لقراءة ملفات PDF'
+        );
+      }
+    } else {
+      // للملفات الأخرى، فتحها في مشغل خارجي
+      final success = await DocumentViewerService.openDocument(document);
+      
+      if (success) {
+        DocumentViewerService.showSuccessMessage(
+          context, 
+          'تم فتح المستند في التطبيق الخارجي'
+        );
+      } else {
+        DocumentViewerService.showErrorMessage(
+          context, 
+          'لا يمكن فتح هذا النوع من الملفات'
+        );
+      }
+    }
   }
 
   /// تأكيد حذف المستند
