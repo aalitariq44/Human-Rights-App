@@ -323,8 +323,7 @@ class PersonalDataProvider extends ChangeNotifier {
       throw Exception('خطأ في معالجة البيانات: $e');
     }
   }
-  }
-  
+
   /// معالجة أخطاء PostgreSQL
   String _handlePostgrestError(PostgrestException e) {
     switch (e.code) {
