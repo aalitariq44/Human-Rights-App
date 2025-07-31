@@ -71,17 +71,14 @@ class AuthProvider extends ChangeNotifier {
       _setError('فشل في تسجيل الدخول');
       _setLoading(false);
       return false;
-    } on AuthApiException catch (e) {
-      // تعامل خاص عند عدم تأكيد البريد الإلكتروني
-      if (e.code == 'email_not_confirmed') {
-        debugPrint('البريد الإلكتروني غير مؤكد');
-        _setError('البريد الإلكتروني غير مؤكد. يرجى تأكيد حسابك من خلال الرابط المرسل إلى بريدك.');
-      } else {
-        debugPrint('خطأ في تسجيل الدخول: ${e.message}');
-        _setError('خطأ في تسجيل الدخول: ${e.message}');
-      }
-      _setLoading(false);
-      return false;
+    } on AuthException catch (e) {
+        if (e.message == 'Email not confirmed') {
+          _setError('Email not confirmed');
+        } else {
+          _setError(e.message);
+        }
+        _setLoading(false);
+        return false;
     } catch (e) {
       debugPrint('خطأ في تسجيل الدخول: ${e.toString()}');
       _setError('خطأ في تسجيل الدخول: ${e.toString()}');

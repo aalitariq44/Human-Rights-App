@@ -68,7 +68,12 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         if (mounted) {
-          _showErrorSnackBar(authProvider.errorMessage ?? 'فشل في تسجيل الدخول');
+          final errorMessage = authProvider.errorMessage;
+          if (errorMessage != null && errorMessage.contains('Email not confirmed')) {
+            _showErrorSnackBar('البريد الإلكتروني غير مؤكد. يرجى تأكيد حسابك أولاً.');
+          } else {
+            _showErrorSnackBar(errorMessage ?? 'فشل في تسجيل الدخول');
+          }
         }
       }
     }
