@@ -450,6 +450,8 @@ class _DocumentViewScreenState extends State<DocumentViewScreen> {
     switch (type) {
       case DocumentType.personalPhoto:
         return Icons.person;
+      case DocumentType.passportCopy:
+        return Icons.credit_card;
       case DocumentType.iraqiAffairsDept:
         return Icons.location_city;
       case DocumentType.kuwaitImmigration:
@@ -460,6 +462,30 @@ class _DocumentViewScreenState extends State<DocumentViewScreen> {
         return Icons.medical_services;
       case DocumentType.other:
         return Icons.description;
+      case DocumentType.birthCertificate:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case DocumentType.marriageCertificate:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case DocumentType.educationCertificate:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case DocumentType.workContract:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case DocumentType.medicalReport:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case DocumentType.bankStatement:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case DocumentType.propertyDocuments:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case DocumentType.custom:
+        // TODO: Handle this case.
+        throw UnimplementedError();
     }
   }
 

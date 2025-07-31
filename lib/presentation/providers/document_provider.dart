@@ -278,28 +278,30 @@ class DocumentProvider extends ChangeNotifier {
 
   /// الحصول على عدد المستندات المطلوبة
   int get requiredDocumentsCount {
-    return DocumentType.values.where((type) => type != DocumentType.other).length;
+    // جعل جميع المستندات اختيارية - لا توجد مستندات مطلوبة بالقوة
+    return DocumentType.values.length;
   }
 
   /// التحقق من اكتمال رفع المستندات المطلوبة
   bool get areRequiredDocumentsComplete {
-    final requiredTypes = DocumentType.values.where((type) => type != DocumentType.other);
-    
-    for (final type in requiredTypes) {
-      if (!hasDocumentOfType(type)) {
-        return false;
-      }
-    }
-    
+    // المستخدم لديه حرية في رفع أي مستندات يريدها
     return true;
   }
 
   /// الحصول على نسبة الإكمال
   double get completionPercentage {
-    final requiredTypes = DocumentType.values.where((type) => type != DocumentType.other);
-    final uploadedRequiredCount = requiredTypes.where(hasDocumentOfType).length;
+    // حساب النسبة بناءً على المستندات المرفوعة فقط
+    if (DocumentType.values.isEmpty) return 0.0;
     
-    return uploadedRequiredCount / requiredTypes.length;
+    final maxPossibleDocuments = DocumentType.values.length;
+    final uploadedCount = _documents.length;
+    
+    // إذا لم يتم رفع أي مستندات، النسبة 0
+    if (uploadedCount == 0) return 0.0;
+    
+    // حساب النسبة بحد أقصى 100%
+    final percentage = uploadedCount / maxPossibleDocuments;
+    return percentage > 1.0 ? 1.0 : percentage;
   }
 
   /// مسح جميع البيانات

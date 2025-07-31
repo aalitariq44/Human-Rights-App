@@ -69,6 +69,15 @@ enum DocumentType {
   kuwaitImmigration('وثائق منفذ الهجرة الكويتية'),
   validResidence('إقامة سارية المفعول'),
   redCrossInternational('وثائق الصليب الأحمر الدولي'),
+  passportCopy('نسخة من الجواز'),
+  birthCertificate('شهادة الميلاد'),
+  marriageCertificate('شهادة الزواج'),
+  educationCertificate('الشهادات التعليمية'),
+  workContract('عقد العمل'),
+  medicalReport('التقارير الطبية'),
+  bankStatement('كشف حساب بنكي'),
+  propertyDocuments('وثائق الممتلكات'),
+  custom('مستند مخصص'),
   other('أخرى');
 
   const DocumentType(this.displayName);

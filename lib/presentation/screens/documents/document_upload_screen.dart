@@ -20,9 +20,11 @@ class DocumentUploadScreen extends StatefulWidget {
 
 class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   final TextEditingController _documentNameController = TextEditingController();
+  final TextEditingController _customDocumentTypeController = TextEditingController();
   DocumentType _selectedDocumentType = DocumentType.personalPhoto;
   String? _selectedFilePath;
   String? _originalFileName;
+  bool _isCustomDocumentType = false;
 
   @override
   void initState() {
@@ -33,17 +35,21 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   @override
   void dispose() {
     _documentNameController.dispose();
+    _customDocumentTypeController.dispose();
     super.dispose();
   }
 
   /// تحميل مستندات المستخدم
   void _loadUserDocuments() {
-    final personalDataProvider = Provider.of<PersonalDataProvider>(context, listen: false);
+    // تحميل جميع المستندات بدون الحاجة للبيانات الشخصية
     final documentProvider = Provider.of<DocumentProvider>(context, listen: false);
+    // يمكن تحميل المستندات المحفوظة محلياً أو حسب معرف المستخدم إذا توفر
+    final personalDataProvider = Provider.of<PersonalDataProvider>(context, listen: false);
     
     if (personalDataProvider.personalData?.id != null) {
       documentProvider.loadUserDocuments(personalDataProvider.personalData!.id!);
     }
+    // إذا لم تتوفر البيانات الشخصية، يمكن للمستخدم رفع المستندات بدونها
   }
 
   @override
@@ -88,9 +94,8 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
 
   /// بناء شريط التقدم
   Widget _buildProgressIndicator(DocumentProvider documentProvider) {
-    final progress = documentProvider.completionPercentage;
     final uploadedCount = documentProvider.uploadedDocumentsCount;
-    final totalCount = documentProvider.requiredDocumentsCount;
+    final progress = uploadedCount > 0 ? 1.0 : 0.0; // إما مكتمل أو لا
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -107,13 +112,13 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'تقدم رفع المستندات',
+                'المستندات المرفوعة',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
-                '$uploadedCount / $totalCount',
+                '$uploadedCount مستند',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: Theme.of(context).primaryColor,
                   fontWeight: FontWeight.bold,
@@ -126,12 +131,14 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
             value: progress,
             backgroundColor: Colors.grey[300],
             valueColor: AlwaysStoppedAnimation<Color>(
-              progress == 1.0 ? Colors.green : Theme.of(context).primaryColor,
+              uploadedCount > 0 ? Colors.green : Colors.grey,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            '${(progress * 100).toInt()}% مكتمل',
+            uploadedCount > 0 
+                ? 'لديك $uploadedCount مستند مرفوع' 
+                : 'لم يتم رفع أي مستندات بعد',
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
@@ -265,10 +272,37 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
             if (value != null) {
               setState(() {
                 _selectedDocumentType = value;
+                _isCustomDocumentType = value == DocumentType.custom;
+                if (!_isCustomDocumentType) {
+                  _customDocumentTypeController.clear();
+                }
               });
             }
           },
         ),
+        
+        // حقل إدخال نوع المستند المخصص
+        if (_isCustomDocumentType) ...[
+          const SizedBox(height: 12),
+          Text(
+            'اسم المستند المخصص *',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _customDocumentTypeController,
+            decoration: InputDecoration(
+              hintText: 'أدخل اسم المستند...',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              filled: true,
+              fillColor: Colors.grey[50],
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -495,6 +529,13 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     dynamic document,
     DocumentProvider documentProvider,
   ) {
+    // تحديد عنوان المستند
+    String documentTitle = document.type.displayName;
+    if (document.type == DocumentType.custom && document.description != null) {
+      // إذا كان مستند مخصص، استخدم الوصف كعنوان
+      documentTitle = document.description!.split(' - ').first;
+    }
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -506,13 +547,24 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
           ),
         ),
         title: Text(
-          document.type.displayName,
+          documentTitle,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(document.originalFileName),
+            if (document.description != null && document.type != DocumentType.custom) ...[
+              const SizedBox(height: 2),
+              Text(
+                document.description!,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
             const SizedBox(height: 4),
             Row(
               children: [
@@ -617,31 +669,49 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   /// رفع المستند
   Future<void> _uploadDocument() async {
     if (_selectedFilePath == null || _originalFileName == null) {
-      return;
-    }
-
-    final personalDataProvider = Provider.of<PersonalDataProvider>(context, listen: false);
-    final documentProvider = Provider.of<DocumentProvider>(context, listen: false);
-
-    if (personalDataProvider.personalData?.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('يرجى إكمال البيانات الشخصية أولاً'),
+          content: Text('يرجى تحديد ملف أولاً'),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
+    // التحقق من المستند المخصص
+    if (_selectedDocumentType == DocumentType.custom && 
+        _customDocumentTypeController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يرجى إدخال اسم المستند المخصص'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final personalDataProvider = Provider.of<PersonalDataProvider>(context, listen: false);
+    final documentProvider = Provider.of<DocumentProvider>(context, listen: false);
+
+    // الحصول على معرف البيانات الشخصية أو استخدام معرف افتراضي
+    String personalDataId = personalDataProvider.personalData?.id ?? 'temp_user_${DateTime.now().millisecondsSinceEpoch}';
+
     final file = File(_selectedFilePath!);
+    
+    // تحديد وصف المستند
+    String description = _documentNameController.text.trim();
+    if (_selectedDocumentType == DocumentType.custom) {
+      // إذا كان مستند مخصص، استخدم اسم المستند المخصص كوصف إضافي
+      String customName = _customDocumentTypeController.text.trim();
+      description = description.isEmpty ? customName : '$customName - $description';
+    }
+
     final success = await documentProvider.uploadDocument(
       file: file,
       originalFileName: _originalFileName!,
       documentType: _selectedDocumentType,
-      personalDataId: personalDataProvider.personalData!.id!,
-      description: _documentNameController.text.trim().isEmpty 
-          ? null 
-          : _documentNameController.text.trim(),
+      personalDataId: personalDataId,
+      description: description.isEmpty ? null : description,
     );
 
     if (success && mounted) {
@@ -657,6 +727,9 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
         _selectedFilePath = null;
         _originalFileName = null;
         _documentNameController.clear();
+        _customDocumentTypeController.clear();
+        _isCustomDocumentType = false;
+        _selectedDocumentType = DocumentType.personalPhoto;
       });
     }
   }
