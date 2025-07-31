@@ -245,6 +245,24 @@ class AuthProvider extends ChangeNotifier {
     }
   }
   
+  /// إعادة إرسال بريد التأكيد
+  Future<bool> resendConfirmationEmail(String email) async {
+    try {
+      _setLoading(true);
+      _clearError();
+
+      await _supabase.auth.resend(type: OtpType.signup, email: email);
+
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      debugPrint('خطأ في إعادة إرسال بريد التأكيد: ${e.toString()}');
+      _setError('خطأ في إعادة إرسال بريد التأكيد: ${e.toString()}');
+      _setLoading(false);
+      return false;
+    }
+  }
+
   // Helper methods
   void _setLoading(bool loading) {
     _isLoading = loading;

@@ -70,7 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           final errorMessage = authProvider.errorMessage;
           if (errorMessage != null && errorMessage.contains('Email not confirmed')) {
-            _showErrorSnackBar('البريد الإلكتروني غير مؤكد. يرجى تأكيد حسابك أولاً.');
+            context.go(RouteNames.confirmAccount, extra: _emailController.text.trim());
           } else {
             _showErrorSnackBar(errorMessage ?? 'فشل في تسجيل الدخول');
           }

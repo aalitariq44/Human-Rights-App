@@ -1,3 +1,4 @@
+import 'package:hoqoqi/presentation/screens/auth/confirm_account_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoqoqi/presentation/screens/personal_data/personal_data_success_screen.dart';
@@ -57,6 +58,12 @@ class AppRouter {
         path: RouteNames.register,
         name: 'register',
         builder: (context, state) => const RegisterScreen(),
+      ),
+
+      GoRoute(
+        path: RouteNames.confirmAccount,
+        name: 'confirm-account',
+        builder: (context, state) => ConfirmAccountScreen(email: state.extra as String),
       ),
       
       // الشاشة الرئيسية

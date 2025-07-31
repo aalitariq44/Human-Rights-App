@@ -7,6 +7,7 @@ class RouteNames {
   // مسارات المصادقة
   static const String login = '/login';
   static const String register = '/register';
+  static const String confirmAccount = '/confirm-account';
   static const String otpVerification = '/otp-verification';
   static const String forgotPassword = '/forgot-password';
   
