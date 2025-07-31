@@ -137,6 +137,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         context.go(RouteNames.help);
                       },
                     ),
+                    _buildOptionCard(
+                      title: 'النتيجة',
+                      subtitle: 'عرض النتيجة بعد مراجعة البيانات ',
+                      icon: Icons.assessment,
+                      color: AppColors.infoColor, // You might need to define AppColors.infoColor or use an existing one
+                      onTap: () {
+                        // Placeholder for navigation to the result page
+                        // context.go(RouteNames.result);
+                      },
+                    ),
                   ],
                 ),
               ],

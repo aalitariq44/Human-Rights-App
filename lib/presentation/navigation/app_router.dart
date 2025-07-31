@@ -10,6 +10,7 @@ import '../screens/auth/register_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/personal_data/personal_data_form_screen.dart';
 import '../screens/documents/document_upload_screen.dart';
+import '../screens/help/help_screen.dart';
 import 'route_names.dart';
 
 /// مسارات التطبيق
@@ -117,6 +118,13 @@ class AppRouter {
         path: RouteNames.documentUpload,
         name: 'document-upload',
         builder: (context, state) => const DocumentUploadScreen(),
+      ),
+      
+      // مسارات أخرى
+      GoRoute(
+        path: RouteNames.help,
+        name: 'help',
+        builder: (context, state) => const HelpScreen(),
       ),
     ],
     
