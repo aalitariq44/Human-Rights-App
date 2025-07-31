@@ -7,6 +7,8 @@ import '../../providers/document_provider.dart';
 import '../../providers/personal_data_provider.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/loading_widget.dart';
+import 'package:go_router/go_router.dart';
+import '../../navigation/route_names.dart';
 
 /// شاشة رفع المستندات
 class DocumentUploadScreen extends StatefulWidget {
@@ -48,6 +50,17 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            final router = GoRouter.of(context);
+            if (router.canPop()) {
+              router.pop();
+            } else {
+              context.go(RouteNames.home);
+            }
+          },
+        ),
         title: const Text('رفع المستندات'),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
